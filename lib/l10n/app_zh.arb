@@ -1,0 +1,14 @@
+{
+  "@@locale": "zh",
+  "appName": "Codex Z",
+  "settings": "设置",
+  "pageNotFound": "页面不存在",
+  "unknownRouteError": "未知路由错误",
+  "backToHome": "返回首页",
+  "homeTitle": "Codex Z",
+  "welcome": "Codex Z",
+  "systemLanguage": "系统语言",
+  "lightTheme": "浅色模式",
+  "darkTheme": "深色模式",
+  "primaryColor": "主题色"
+}

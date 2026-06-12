@@ -1,0 +1,14 @@
+{
+  "@@locale": "en",
+  "appName": "Codex Z",
+  "settings": "Settings",
+  "pageNotFound": "Page not found",
+  "unknownRouteError": "Unknown route error",
+  "backToHome": "Back to home",
+  "homeTitle": "Codex Z",
+  "welcome": "Codex Z",
+  "systemLanguage": "System language",
+  "lightTheme": "Light mode",
+  "darkTheme": "Dark mode",
+  "primaryColor": "Primary color"
+}
