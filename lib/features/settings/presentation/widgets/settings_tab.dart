@@ -1,5 +1,6 @@
 import 'package:codex_z/common/widgets/icon_badge.dart';
 import 'package:codex_z/common/widgets/section_title.dart';
+import 'package:codex_z/common/widgets/surface_card.dart';
 import 'package:codex_z/common/widgets/workspace_surface.dart';
 import 'package:codex_z/core/constants/app_sizes.dart';
 import 'package:codex_z/core/extensions/context_extensions.dart';
@@ -7,7 +8,6 @@ import 'package:codex_z/core/providers/locale_provider.dart';
 import 'package:codex_z/core/providers/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 class SettingsTab extends ConsumerWidget {
   const SettingsTab({super.key});
@@ -27,6 +27,7 @@ class SettingsTab extends ConsumerWidget {
 
     return WorkspaceSurface(
       child: ListView(
+        clipBehavior: Clip.none,
         padding: EdgeInsets.all(AppSizes.pagePadding),
         children: [
           SectionTitle(title: context.l10n.settings),
@@ -138,10 +139,8 @@ class SettingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return GlassCard(
-      width: double.infinity,
+    return SurfaceCard(
       padding: EdgeInsets.all(14.cw(min: 12, max: 16)),
-      shape: LiquidRoundedSuperellipse(borderRadius: AppSizes.cardRadius + 2),
       child: Row(
         children: [
           IconBadge(icon: icon),
@@ -192,8 +191,6 @@ class ColorSwatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = Theme.of(context).colorScheme.onSurface;
-
     return Tooltip(
       message:
           '#${color.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
@@ -208,11 +205,18 @@ class ColorSwatch extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
-              color: selected
-                  ? borderColor
-                  : Colors.white.withValues(alpha: 0.74),
+              color: Colors.white.withValues(alpha: selected ? 0.96 : 0.74),
               width: selected ? 3 : 2,
             ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.36),
+                      blurRadius: 14,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
           ),
           child: selected
               ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)

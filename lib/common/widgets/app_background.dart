@@ -1,8 +1,8 @@
 import 'package:codex_z/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
-class GlassAppBackground extends StatelessWidget {
-  const GlassAppBackground({super.key, required this.child});
+class AppBackground extends StatelessWidget {
+  const AppBackground({super.key, required this.child});
 
   final Widget child;
 
@@ -20,10 +20,10 @@ class GlassAppBackground extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            colorScheme.primary.withValues(alpha: context.isDark ? 0.18 : 0.14),
+            colorScheme.primary.withValues(alpha: context.isDark ? 0.12 : 0.10),
             base,
-            colorScheme.tertiary.withValues(
-              alpha: context.isDark ? 0.12 : 0.10,
+            colorScheme.secondary.withValues(
+              alpha: context.isDark ? 0.10 : 0.08,
             ),
           ],
         ),

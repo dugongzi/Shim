@@ -2,7 +2,6 @@ import 'package:codex_z/core/constants/app_sizes.dart';
 import 'package:codex_z/core/extensions/context_extensions.dart';
 import 'package:codex_z/features/home/presentation/widgets/home_tab_item.dart';
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 class HomeSidebar extends StatelessWidget {
   const HomeSidebar({
@@ -18,11 +17,32 @@ class HomeSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SizedBox(
       width: AppSizes.sidebarWidth,
-      child: GlassPanel(
+      child: Container(
         padding: EdgeInsets.all(AppSizes.itemGap),
-        shape: LiquidRoundedSuperellipse(borderRadius: AppSizes.cardRadius + 4),
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withValues(
+            alpha: context.isDark ? 0.68 : 0.76,
+          ),
+          borderRadius: BorderRadius.circular(AppSizes.cardRadius + 4),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(
+              alpha: context.isDark ? 0.18 : 0.42,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: context.isDark ? 0.18 : 0.06,
+              ),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

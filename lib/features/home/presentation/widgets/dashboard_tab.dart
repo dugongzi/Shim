@@ -1,10 +1,10 @@
 import 'package:codex_z/common/widgets/icon_badge.dart';
 import 'package:codex_z/common/widgets/section_title.dart';
+import 'package:codex_z/common/widgets/surface_card.dart';
 import 'package:codex_z/common/widgets/workspace_surface.dart';
 import 'package:codex_z/core/constants/app_sizes.dart';
 import 'package:codex_z/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
@@ -13,6 +13,7 @@ class DashboardTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return WorkspaceSurface(
       child: ListView(
+        clipBehavior: Clip.none,
         padding: EdgeInsets.all(AppSizes.pagePadding),
         children: [
           const WorkspaceHeader(),
@@ -128,12 +129,11 @@ class WorkspaceHeader extends StatelessWidget {
             ],
           ),
         ),
-        GlassCard(
+        SurfaceCard(
           padding: EdgeInsets.symmetric(
             horizontal: 12.cw(min: 10, max: 14),
             vertical: 8.ch(min: 7, max: 10),
           ),
-          shape: LiquidRoundedSuperellipse(borderRadius: AppSizes.cardRadius),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -175,9 +175,8 @@ class StatusCard extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      child: GlassCard(
+      child: SurfaceCard(
         padding: EdgeInsets.all(14.cw(min: 12, max: 16)),
-        shape: LiquidRoundedSuperellipse(borderRadius: AppSizes.cardRadius + 2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -246,9 +245,8 @@ class ActionCard extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      child: GlassCard(
+      child: SurfaceCard(
         padding: EdgeInsets.all(14.cw(min: 12, max: 16)),
-        shape: LiquidRoundedSuperellipse(borderRadius: AppSizes.cardRadius + 2),
         child: Row(
           children: [
             IconBadge(icon: icon),
@@ -294,10 +292,8 @@ class TimelineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      width: double.infinity,
+    return SurfaceCard(
       padding: EdgeInsets.all(14.cw(min: 12, max: 16)),
-      shape: LiquidRoundedSuperellipse(borderRadius: AppSizes.cardRadius + 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

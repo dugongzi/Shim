@@ -21,7 +21,7 @@ class WorkspaceSurface extends StatelessWidget {
           color: colorScheme.outlineVariant.withValues(alpha: 0.28),
         ),
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.none,
       child: child,
     );
   }

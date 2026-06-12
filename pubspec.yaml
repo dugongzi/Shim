@@ -46,7 +46,6 @@ dependencies:
   form_builder_validators: ^11.2.0
   flutter_cache_manager: ^3.4.1
   flutter_screenutil: ^5.9.3
-  liquid_glass_widgets: ^0.5.0
 
 dev_dependencies:
   flutter_test:
