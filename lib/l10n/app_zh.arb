@@ -34,5 +34,15 @@
     }
   },
   "injectSuccess": "注入成功",
+  "codexDetectedTitle": "检测到 Codex 正在运行",
+  "codexDetectedMessage": "检测到的路径：{path}\n\n是否保存此路径并直接注入？",
+  "@codexDetectedMessage": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "codexDetectedNoPathMessage": "未能反查到 Codex 路径，是否直接注入到当前窗口？",
+  "confirm": "确认",
+  "cancel": "取消",
   "settingsPersistedDescription": "这些设置会通过 SharedPreferencesAsync 持久化保存。"
 }

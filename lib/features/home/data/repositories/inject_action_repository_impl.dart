@@ -13,6 +13,11 @@ class InjectActionRepositoryImpl implements InjectActionRepository {
   }
 
   @override
+  Future<String?> findExecutableByPort({required int debugPort}) {
+    return _dataSource.findExecutableByPort(debugPort);
+  }
+
+  @override
   Future<void> launchExecutable({
     required String executablePath,
     required int debugPort,
@@ -26,6 +31,11 @@ class InjectActionRepositoryImpl implements InjectActionRepository {
   @override
   Future<void> waitForDebugPort({required int debugPort}) {
     return _dataSource.waitForDebugPort(debugPort: debugPort);
+  }
+
+  @override
+  Future<String> loadInjectScript() {
+    return _dataSource.loadInjectScript();
   }
 
   @override

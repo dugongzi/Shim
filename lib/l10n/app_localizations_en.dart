@@ -100,6 +100,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get injectSuccess => 'Injection successful';
 
   @override
+  String get codexDetectedTitle => 'Codex is already running';
+
+  @override
+  String codexDetectedMessage(String path) {
+    return 'Detected path: $path\n\nSave this path and inject directly?';
+  }
+
+  @override
+  String get codexDetectedNoPathMessage =>
+      'Could not detect Codex path. Inject directly into the running window?';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
   String get settingsPersistedDescription =>
       'These settings are persisted with SharedPreferencesAsync.';
 }

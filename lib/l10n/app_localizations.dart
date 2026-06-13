@@ -272,6 +272,36 @@ abstract class AppLocalizations {
   /// **'注入成功'**
   String get injectSuccess;
 
+  /// No description provided for @codexDetectedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到 Codex 正在运行'**
+  String get codexDetectedTitle;
+
+  /// No description provided for @codexDetectedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到的路径：{path}\n\n是否保存此路径并直接注入？'**
+  String codexDetectedMessage(String path);
+
+  /// No description provided for @codexDetectedNoPathMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'未能反查到 Codex 路径，是否直接注入到当前窗口？'**
+  String get codexDetectedNoPathMessage;
+
+  /// No description provided for @confirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认'**
+  String get confirm;
+
+  /// No description provided for @cancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get cancel;
+
   /// No description provided for @settingsPersistedDescription.
   ///
   /// In zh, this message translates to:

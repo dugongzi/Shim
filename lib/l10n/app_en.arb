@@ -34,5 +34,15 @@
     }
   },
   "injectSuccess": "Injection successful",
+  "codexDetectedTitle": "Codex is already running",
+  "codexDetectedMessage": "Detected path: {path}\n\nSave this path and inject directly?",
+  "@codexDetectedMessage": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "codexDetectedNoPathMessage": "Could not detect Codex path. Inject directly into the running window?",
+  "confirm": "Confirm",
+  "cancel": "Cancel",
   "settingsPersistedDescription": "These settings are persisted with SharedPreferencesAsync."
 }

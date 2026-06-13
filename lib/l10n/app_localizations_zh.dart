@@ -98,6 +98,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get injectSuccess => '注入成功';
 
   @override
+  String get codexDetectedTitle => '检测到 Codex 正在运行';
+
+  @override
+  String codexDetectedMessage(String path) {
+    return '检测到的路径：$path\n\n是否保存此路径并直接注入？';
+  }
+
+  @override
+  String get codexDetectedNoPathMessage => '未能反查到 Codex 路径，是否直接注入到当前窗口？';
+
+  @override
+  String get confirm => '确认';
+
+  @override
+  String get cancel => '取消';
+
+  @override
   String get settingsPersistedDescription =>
       '这些设置会通过 SharedPreferencesAsync 持久化保存。';
 }

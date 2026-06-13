@@ -25,6 +25,13 @@ Future<bool> isDebugPortAlive(Ref ref, {required int debugPort}) async {
 }
 
 @riverpod
+Future<String?> findExecutableByPort(Ref ref, {required int debugPort}) async {
+  return ref
+      .read(injectActionRepositoryProvider)
+      .findExecutableByPort(debugPort: debugPort);
+}
+
+@riverpod
 Future<void> launchExecutable(
   Ref ref, {
   required String executablePath,
@@ -44,6 +51,11 @@ Future<void> waitForDebugPort(Ref ref, {required int debugPort}) async {
 }
 
 @riverpod
+Future<String> loadInjectScript(Ref ref) async {
+  return ref.read(injectActionRepositoryProvider).loadInjectScript();
+}
+
+@riverpod
 Future<void> injectScript(
   Ref ref, {
   required int debugPort,
@@ -54,25 +66,42 @@ Future<void> injectScript(
       .injectScript(debugPort: debugPort, script: script);
 }
 
-/// 完整流程：检查路径 → 检查端口 → 启动 → 等就绪 → 注入
+/// 直接注入到端口（要求端口上已经有 page）
 @riverpod
-Future<void> launchAndInject(
-  Ref ref, {
-  required int debugPort,
-  required String script,
-}) async {
+Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
+  final repo = ref.read(injectActionRepositoryProvider);
+  final script = await repo.loadInjectScript();
+  await repo.injectScript(debugPort: debugPort, script: script);
+}
+
+/// 完整流程：
+/// - 端口活 + 路径已设 → 直接注入到现有窗口
+/// - 端口活 + 路径未设 → 抛 CodexAlreadyRunningException(detectedPath)，UI 弹窗确认
+/// - 端口不活 + 路径已设 → 启动 → 等就绪 → 注入
+/// - 端口不活 + 路径未设 → 抛 CodexPathNotSetException
+@riverpod
+Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
+  final repo = ref.read(injectActionRepositoryProvider);
   final path = await ref.read(codexAppPathProvider.future);
-  if (path == null || path.isEmpty) {
-    throw const CodexPathNotSetException();
+  final hasPath = path != null && path.isNotEmpty;
+
+  if (await repo.isDebugPortAlive(debugPort: debugPort)) {
+    if (hasPath) {
+      final script = await repo.loadInjectScript();
+      await repo.injectScript(debugPort: debugPort, script: script);
+      return;
+    }
+    final detected = await repo.findExecutableByPort(debugPort: debugPort);
+    throw CodexAlreadyRunningException(detected);
   }
 
-  final repo = ref.read(injectActionRepositoryProvider);
-  if (await repo.isDebugPortAlive(debugPort: debugPort)) {
-    throw const CodexAlreadyRunningException();
+  if (!hasPath) {
+    throw const CodexPathNotSetException();
   }
 
   await repo.launchExecutable(executablePath: path, debugPort: debugPort);
   await repo.waitForDebugPort(debugPort: debugPort);
+  final script = await repo.loadInjectScript();
   await repo.injectScript(debugPort: debugPort, script: script);
 }
 
@@ -81,5 +110,7 @@ class CodexPathNotSetException implements Exception {
 }
 
 class CodexAlreadyRunningException implements Exception {
-  const CodexAlreadyRunningException();
+  final String? detectedPath;
+
+  const CodexAlreadyRunningException(this.detectedPath);
 }
