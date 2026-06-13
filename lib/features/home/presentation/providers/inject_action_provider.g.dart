@@ -497,97 +497,17 @@ final class LoadInjectScriptProvider
 
 String _$loadInjectScriptHash() => r'3e72081d0ec98feb8821f6d39217503072b40fbb';
 
-@ProviderFor(injectScript)
-const injectScriptProvider = InjectScriptFamily._();
-
-final class InjectScriptProvider
-    extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
-    with $FutureModifier<void>, $FutureProvider<void> {
-  const InjectScriptProvider._({
-    required InjectScriptFamily super.from,
-    required ({int debugPort, String script}) super.argument,
-  }) : super(
-         retry: null,
-         name: r'injectScriptProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$injectScriptHash();
-
-  @override
-  String toString() {
-    return r'injectScriptProvider'
-        ''
-        '$argument';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<void> $createElement($ProviderPointer pointer) =>
-      $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<void> create(Ref ref) {
-    final argument = this.argument as ({int debugPort, String script});
-    return injectScript(
-      ref,
-      debugPort: argument.debugPort,
-      script: argument.script,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is InjectScriptProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$injectScriptHash() => r'f6155363221e0b62e9921139683447a85b149d63';
-
-final class InjectScriptFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<void>,
-          ({int debugPort, String script})
-        > {
-  const InjectScriptFamily._()
-    : super(
-        retry: null,
-        name: r'injectScriptProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  InjectScriptProvider call({required int debugPort, required String script}) =>
-      InjectScriptProvider._(
-        argument: (debugPort: debugPort, script: script),
-        from: this,
-      );
-
-  @override
-  String toString() => r'injectScriptProvider';
-}
-
-/// 直接注入到端口（要求端口上已经有 page）
+/// 直接注入到端口（要求端口上已经有 page），建立 CDP 长连接并安装 bridge + 脚本
 
 @ProviderFor(injectToRunningPort)
 const injectToRunningPortProvider = InjectToRunningPortFamily._();
 
-/// 直接注入到端口（要求端口上已经有 page）
+/// 直接注入到端口（要求端口上已经有 page），建立 CDP 长连接并安装 bridge + 脚本
 
 final class InjectToRunningPortProvider
     extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
     with $FutureModifier<void>, $FutureProvider<void> {
-  /// 直接注入到端口（要求端口上已经有 page）
+  /// 直接注入到端口（要求端口上已经有 page），建立 CDP 长连接并安装 bridge + 脚本
   const InjectToRunningPortProvider._({
     required InjectToRunningPortFamily super.from,
     required int super.argument,
@@ -632,9 +552,9 @@ final class InjectToRunningPortProvider
 }
 
 String _$injectToRunningPortHash() =>
-    r'c6090a8e46b7c3f8a6abf1f619700bd3b2a2682b';
+    r'52da9e90e5f6df2b50a4e5cc8ac68d82bc24077c';
 
-/// 直接注入到端口（要求端口上已经有 page）
+/// 直接注入到端口（要求端口上已经有 page），建立 CDP 长连接并安装 bridge + 脚本
 
 final class InjectToRunningPortFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<void>, int> {
@@ -647,7 +567,7 @@ final class InjectToRunningPortFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// 直接注入到端口（要求端口上已经有 page）
+  /// 直接注入到端口（要求端口上已经有 page），建立 CDP 长连接并安装 bridge + 脚本
 
   InjectToRunningPortProvider call({required int debugPort}) =>
       InjectToRunningPortProvider._(argument: debugPort, from: this);
@@ -722,7 +642,7 @@ final class LaunchAndInjectProvider
   }
 }
 
-String _$launchAndInjectHash() => r'10e693ecf304447bc6941b87246eb5b3a79c1d65';
+String _$launchAndInjectHash() => r'e411e41636950ba795bf1779c3c717d9dd30bbac';
 
 /// 完整流程：
 /// - 端口活 + 路径已设 → 直接注入到现有窗口

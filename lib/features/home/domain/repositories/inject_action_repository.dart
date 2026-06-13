@@ -19,10 +19,4 @@ abstract class InjectActionRepository {
 
   /// 加载注入脚本（debug 模式优先读外部文件，否则读 asset）
   Future<String> loadInjectScript();
-
-  /// 在指定调试端口的页面里执行一段 JS
-  Future<void> injectScript({
-    required int debugPort,
-    required String script,
-  });
 }

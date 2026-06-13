@@ -42,12 +42,4 @@ class InjectActionRepositoryImpl implements InjectActionRepository {
   Future<String> loadInjectScript() {
     return _dataSource.loadInjectScript();
   }
-
-  @override
-  Future<void> injectScript({
-    required int debugPort,
-    required String script,
-  }) {
-    return _dataSource.injectScript(debugPort: debugPort, script: script);
-  }
 }

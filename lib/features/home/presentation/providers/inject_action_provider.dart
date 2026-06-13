@@ -1,4 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shim/core/services/bridge_service.dart';
+import 'package:shim/core/services/cdp_service.dart';
 import 'package:shim/features/home/data/datasources/inject_action_datasource.dart';
 import 'package:shim/features/home/data/repositories/inject_action_repository_impl.dart';
 import 'package:shim/features/home/domain/repositories/inject_action_repository.dart';
@@ -66,23 +68,15 @@ Future<String> loadInjectScript(Ref ref) async {
   return ref.read(injectActionRepositoryProvider).loadInjectScript();
 }
 
-@riverpod
-Future<void> injectScript(
-  Ref ref, {
-  required int debugPort,
-  required String script,
-}) async {
-  await ref
-      .read(injectActionRepositoryProvider)
-      .injectScript(debugPort: debugPort, script: script);
-}
-
-/// 直接注入到端口（要求端口上已经有 page）
+/// 直接注入到端口（要求端口上已经有 page），建立 CDP 长连接并安装 bridge + 脚本
 @riverpod
 Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
   final repo = ref.read(injectActionRepositoryProvider);
+  final cdp = ref.read(cdpServiceProvider);
+  final bridge = ref.read(bridgeServiceProvider);
   final script = await repo.loadInjectScript();
-  await repo.injectScript(debugPort: debugPort, script: script);
+  await cdp.connect(debugPort);
+  await bridge.install(documentScripts: [script]);
 }
 
 /// 完整流程：
@@ -92,14 +86,22 @@ Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
 /// - 端口不活 + 路径未设 → 抛 CodexPathNotSetException
 @riverpod
 Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
+  // 所有 ref 依赖在第一个 await 前读出，之后只用本地引用（避免 provider dispose 后用 ref）
   final repo = ref.read(injectActionRepositoryProvider);
+  final cdp = ref.read(cdpServiceProvider);
+  final bridge = ref.read(bridgeServiceProvider);
   final path = await ref.read(codexAppPathProvider.future);
   final hasPath = path != null && path.isNotEmpty;
 
+  Future<void> connectAndInject() async {
+    final script = await repo.loadInjectScript();
+    await cdp.connect(debugPort);
+    await bridge.install(documentScripts: [script]);
+  }
+
   if (await repo.isDebugPortAlive(debugPort: debugPort)) {
     if (hasPath) {
-      final script = await repo.loadInjectScript();
-      await repo.injectScript(debugPort: debugPort, script: script);
+      await connectAndInject();
       return;
     }
     final detected = await repo.findExecutableByPort(debugPort: debugPort);
@@ -112,8 +114,7 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
 
   await repo.launchExecutable(executablePath: path, debugPort: debugPort);
   await repo.waitForDebugPort(debugPort: debugPort);
-  final script = await repo.loadInjectScript();
-  await repo.injectScript(debugPort: debugPort, script: script);
+  await connectAndInject();
 }
 
 class CodexPathNotSetException implements Exception {

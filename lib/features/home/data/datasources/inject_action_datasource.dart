@@ -6,7 +6,6 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:web_socket_channel/io.dart';
 
 class InjectActionDatasource {
   static const String _injectAssetPath = 'assets/inject/codex_enhance.js';
@@ -163,36 +162,6 @@ class InjectActionDatasource {
     return rootBundle.loadString(_injectAssetPath);
   }
 
-  Future<void> injectScript({
-    required int debugPort,
-    required String script,
-  }) async {
-    final wsUrl = await _findPageWebSocketUrl(debugPort);
-    final channel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
-    final broadcast = channel.stream.asBroadcastStream();
-    try {
-      await _sendCommand(
-        channel,
-        broadcast,
-        id: 1,
-        method: 'Page.addScriptToEvaluateOnNewDocument',
-        params: {'source': script},
-      );
-      await _sendCommand(
-        channel,
-        broadcast,
-        id: 2,
-        method: 'Runtime.evaluate',
-        params: {
-          'expression': script,
-          'allowUnsafeEvalBlockedByCSP': true,
-        },
-      );
-    } finally {
-      await channel.sink.close();
-    }
-  }
-
   /// 在 page target 上拿到 devtoolsFrontendUrl，用于系统浏览器打开完整 DevTools
   Future<String?> findDevtoolsUrl(int debugPort) async {
     try {
@@ -226,31 +195,5 @@ class InjectActionDatasource {
       }
     }
     throw StateError('No injectable page target on port $debugPort');
-  }
-
-  Future<Map<String, dynamic>> _sendCommand(
-    IOWebSocketChannel channel,
-    Stream<dynamic> broadcast, {
-    required int id,
-    required String method,
-    Map<String, dynamic>? params,
-  }) async {
-    final completer = Completer<Map<String, dynamic>>();
-    final subscription = broadcast.listen((raw) {
-      final msg = jsonDecode(raw as String) as Map<String, dynamic>;
-      if (msg['id'] == id && !completer.isCompleted) {
-        completer.complete(msg);
-      }
-    });
-    channel.sink.add(jsonEncode({
-      'id': id,
-      'method': method,
-      if (params != null) 'params': params,
-    }));
-    try {
-      return await completer.future.timeout(const Duration(seconds: 5));
-    } finally {
-      await subscription.cancel();
-    }
   }
 }
