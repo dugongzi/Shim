@@ -40,6 +40,22 @@
     }
   },
   "injectSuccess": "注入成功",
+  "scripts": "脚本",
+  "noScripts": "暂无脚本",
+  "importScript": "导入脚本",
+  "selectAll": "全选",
+  "invertSelection": "反选",
+  "deleteSelected": "删除",
+  "enableSelected": "启用",
+  "disableSelected": "禁用",
+  "notImplementedYet": "暂未实现",
+  "openInspector": "打开控制台",
+  "openInspectorFailed": "打开控制台失败：{message}",
+  "@openInspectorFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "codexDetectedTitle": "检测到 Codex 正在运行",
   "codexDetectedMessage": "检测到的路径：{path}\n\n是否保存此路径并直接注入？",
   "@codexDetectedMessage": {

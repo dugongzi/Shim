@@ -23,7 +23,7 @@ dependencies:
   path_provider: ^2.1.5
   dio: ^5.9.2
   pretty_dio_logger: ^1.4.0
-  json_annotation: ^4.12.0
+  json_annotation: ^4.9.0
   freezed_annotation: ^3.1.0
   drift: ^2.19.1+1
   sqlite3_flutter_libs: ^0.5.42
@@ -54,6 +54,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   riverpod_generator: 3.0.3
   build_runner: ^2.7.1
+  freezed: ^3.2.3
+  json_serializable: ^6.8.0
 
 flutter:
   generate: true

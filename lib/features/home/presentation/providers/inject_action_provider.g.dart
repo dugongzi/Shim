@@ -244,6 +244,75 @@ final class FindExecutableByPortFamily extends $Family
   String toString() => r'findExecutableByPortProvider';
 }
 
+@ProviderFor(openInspector)
+const openInspectorProvider = OpenInspectorFamily._();
+
+final class OpenInspectorProvider
+    extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
+    with $FutureModifier<void>, $FutureProvider<void> {
+  const OpenInspectorProvider._({
+    required OpenInspectorFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'openInspectorProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$openInspectorHash();
+
+  @override
+  String toString() {
+    return r'openInspectorProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<void> create(Ref ref) {
+    final argument = this.argument as int;
+    return openInspector(ref, debugPort: argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is OpenInspectorProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$openInspectorHash() => r'9df91c96155a3980b9e8e828a70411ba5af32e66';
+
+final class OpenInspectorFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<void>, int> {
+  const OpenInspectorFamily._()
+    : super(
+        retry: null,
+        name: r'openInspectorProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  OpenInspectorProvider call({required int debugPort}) =>
+      OpenInspectorProvider._(argument: debugPort, from: this);
+
+  @override
+  String toString() => r'openInspectorProvider';
+}
+
 @ProviderFor(launchExecutable)
 const launchExecutableProvider = LaunchExecutableFamily._();
 

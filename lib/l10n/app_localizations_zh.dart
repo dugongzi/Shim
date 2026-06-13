@@ -103,6 +103,41 @@ class AppLocalizationsZh extends AppLocalizations {
   String get injectSuccess => '注入成功';
 
   @override
+  String get scripts => '脚本';
+
+  @override
+  String get noScripts => '暂无脚本';
+
+  @override
+  String get importScript => '导入脚本';
+
+  @override
+  String get selectAll => '全选';
+
+  @override
+  String get invertSelection => '反选';
+
+  @override
+  String get deleteSelected => '删除';
+
+  @override
+  String get enableSelected => '启用';
+
+  @override
+  String get disableSelected => '禁用';
+
+  @override
+  String get notImplementedYet => '暂未实现';
+
+  @override
+  String get openInspector => '打开控制台';
+
+  @override
+  String openInspectorFailed(String message) {
+    return '打开控制台失败：$message';
+  }
+
+  @override
   String get codexDetectedTitle => '检测到 Codex 正在运行';
 
   @override

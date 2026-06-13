@@ -32,6 +32,13 @@ Future<String?> findExecutableByPort(Ref ref, {required int debugPort}) async {
 }
 
 @riverpod
+Future<void> openInspector(Ref ref, {required int debugPort}) async {
+  await ref.read(injectActionRepositoryProvider).openInspector(
+        debugPort: debugPort,
+      );
+}
+
+@riverpod
 Future<void> launchExecutable(
   Ref ref, {
   required String executablePath,

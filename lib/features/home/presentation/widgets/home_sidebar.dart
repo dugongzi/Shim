@@ -1,5 +1,7 @@
 import 'package:shim/core/constants/app_sizes.dart';
 import 'package:shim/core/extensions/context_extensions.dart';
+import 'package:shim/features/home/presentation/widgets/inject_button.dart';
+import 'package:shim/features/home/presentation/widgets/open_inspector_button.dart';
 import 'package:flutter/material.dart';
 
 class HomeSidebar extends StatelessWidget {
@@ -50,6 +52,10 @@ class HomeSidebar extends StatelessWidget {
                 itemBuilder: (context, index) => children[index],
               ),
             ),
+            const OpenInspectorButton(debugPort: 9229),
+            SizedBox(height: AppSizes.itemGap),
+            const InjectButton(debugPort: 9229),
+            SizedBox(height: AppSizes.itemGap),
             const SidebarStatus(),
           ],
         ),

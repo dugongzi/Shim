@@ -1,0 +1,20 @@
+import 'package:shim/features/scripts/data/datasources/script_query_datasource.dart';
+import 'package:shim/features/scripts/domain/models/inject_script.dart';
+import 'package:shim/features/scripts/domain/repositories/script_query_repository.dart';
+
+class ScriptQueryRepositoryImpl implements ScriptQueryRepository {
+  final ScriptQueryDatasource _dataSource;
+
+  ScriptQueryRepositoryImpl({required ScriptQueryDatasource dataSource})
+      : _dataSource = dataSource;
+
+  @override
+  Future<List<InjectScript>> listScripts() {
+    return _dataSource.listScripts();
+  }
+
+  @override
+  Future<bool> isScriptEnabled({required String id}) {
+    return _dataSource.isScriptEnabled(id);
+  }
+}

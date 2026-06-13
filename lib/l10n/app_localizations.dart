@@ -278,6 +278,72 @@ abstract class AppLocalizations {
   /// **'注入成功'**
   String get injectSuccess;
 
+  /// No description provided for @scripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本'**
+  String get scripts;
+
+  /// No description provided for @noScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无脚本'**
+  String get noScripts;
+
+  /// No description provided for @importScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入脚本'**
+  String get importScript;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全选'**
+  String get selectAll;
+
+  /// No description provided for @invertSelection.
+  ///
+  /// In zh, this message translates to:
+  /// **'反选'**
+  String get invertSelection;
+
+  /// No description provided for @deleteSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get deleteSelected;
+
+  /// No description provided for @enableSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用'**
+  String get enableSelected;
+
+  /// No description provided for @disableSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁用'**
+  String get disableSelected;
+
+  /// No description provided for @notImplementedYet.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂未实现'**
+  String get notImplementedYet;
+
+  /// No description provided for @openInspector.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开控制台'**
+  String get openInspector;
+
+  /// No description provided for @openInspectorFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开控制台失败：{message}'**
+  String openInspectorFailed(String message);
+
   /// No description provided for @codexDetectedTitle.
   ///
   /// In zh, this message translates to:

@@ -40,6 +40,22 @@
     }
   },
   "injectSuccess": "Injection successful",
+  "scripts": "Scripts",
+  "noScripts": "No scripts",
+  "importScript": "Import script",
+  "selectAll": "Select all",
+  "invertSelection": "Invert",
+  "deleteSelected": "Delete",
+  "enableSelected": "Enable",
+  "disableSelected": "Disable",
+  "notImplementedYet": "Not implemented yet",
+  "openInspector": "Open inspector",
+  "openInspectorFailed": "Failed to open inspector: {message}",
+  "@openInspectorFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "codexDetectedTitle": "Codex is already running",
   "codexDetectedMessage": "Detected path: {path}\n\nSave this path and inject directly?",
   "@codexDetectedMessage": {

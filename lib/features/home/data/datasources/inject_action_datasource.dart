@@ -190,6 +190,23 @@ class InjectActionDatasource {
     }
   }
 
+  /// 在 Codex 自己窗口里打开 DevTools 面板
+  Future<void> openInspector(int debugPort) async {
+    final wsUrl = await _findPageWebSocketUrl(debugPort);
+    final channel = IOWebSocketChannel.connect(Uri.parse(wsUrl));
+    final broadcast = channel.stream.asBroadcastStream();
+    try {
+      await _sendCommand(
+        channel,
+        broadcast,
+        id: 1,
+        method: 'Inspector.enable',
+      );
+    } finally {
+      await channel.sink.close();
+    }
+  }
+
   Future<String> _findPageWebSocketUrl(int debugPort) async {
     final response = await _dio.getUri<List<dynamic>>(
       Uri.parse('http://127.0.0.1:$debugPort/json'),

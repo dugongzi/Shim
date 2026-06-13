@@ -105,6 +105,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get injectSuccess => 'Injection successful';
 
   @override
+  String get scripts => 'Scripts';
+
+  @override
+  String get noScripts => 'No scripts';
+
+  @override
+  String get importScript => 'Import script';
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String get invertSelection => 'Invert';
+
+  @override
+  String get deleteSelected => 'Delete';
+
+  @override
+  String get enableSelected => 'Enable';
+
+  @override
+  String get disableSelected => 'Disable';
+
+  @override
+  String get notImplementedYet => 'Not implemented yet';
+
+  @override
+  String get openInspector => 'Open inspector';
+
+  @override
+  String openInspectorFailed(String message) {
+    return 'Failed to open inspector: $message';
+  }
+
+  @override
   String get codexDetectedTitle => 'Codex is already running';
 
   @override

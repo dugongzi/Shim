@@ -9,14 +9,9 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class InjectButton extends HookConsumerWidget {
-  const InjectButton({
-    super.key,
-    required this.debugPort,
-    required this.onInjected,
-  });
+  const InjectButton({super.key, required this.debugPort});
 
   final int debugPort;
-  final ValueChanged<DateTime> onInjected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,7 +49,6 @@ class InjectButton extends HookConsumerWidget {
     try {
       try {
         await ref.read(launchAndInjectProvider(debugPort: debugPort).future);
-        onInjected(DateTime.now());
         SmartDialog.showToast(l10n.injectSuccess);
       } on CodexPathNotSetException {
         SmartDialog.showToast(l10n.codexPathRequired);
@@ -71,7 +65,6 @@ class InjectButton extends HookConsumerWidget {
         await ref.read(
           injectToRunningPortProvider(debugPort: debugPort).future,
         );
-        onInjected(DateTime.now());
         SmartDialog.showToast(l10n.injectSuccess);
       }
     } catch (e) {
