@@ -46,6 +46,7 @@ dependencies:
   form_builder_validators: ^11.2.0
   flutter_cache_manager: ^3.4.1
   flutter_screenutil: ^5.9.3
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

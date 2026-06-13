@@ -21,8 +21,10 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # 强制使用 package: 导入而非相对路径
+    always_use_package_imports: true
+    # 避免相对路径导入 lib 目录下的文件
+    avoid_relative_lib_imports: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
