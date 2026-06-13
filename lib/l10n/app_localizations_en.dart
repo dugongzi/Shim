@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'Codex Z';
+  String get appName => 'Shim';
 
   @override
   String get home => 'Home';
@@ -27,10 +27,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToHome => 'Back to home';
 
   @override
-  String get homeTitle => 'Codex Z';
+  String get homeTitle => 'Shim';
 
   @override
-  String get welcome => 'Codex Z';
+  String get welcome => 'Shim';
 
   @override
   String get inject => 'Inject';
@@ -40,7 +40,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get injectPanelDescription =>
-      'Inject the Codex Z control surface into the target environment for connection, debugging, and operation.';
+      'Inject the Shim control surface into the target environment for connection, debugging, and operation.';
 
   @override
   String get injectReadyStatus => 'Ready to inject';

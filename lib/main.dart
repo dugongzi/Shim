@@ -1,5 +1,5 @@
-import 'package:codex_z/common/widgets/app_bootstrap.dart';
-import 'package:codex_z/core/routes/app_router.dart';
+import 'package:shim/common/widgets/app_bootstrap.dart';
+import 'package:shim/core/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -19,7 +19,7 @@ class MainApp extends ConsumerWidget {
     return AppBootstrap(
       builder: (context, locale, lightTheme, darkTheme, themeMode) {
         return MaterialApp.router(
-          title: 'Codex Z',
+          title: 'Shim',
           locale: locale,
           localizationsDelegates: AppBootstrap.localizationsDelegates,
           supportedLocales: AppBootstrap.supportedLocales,

@@ -1,11 +1,11 @@
-import 'package:codex_z/common/widgets/icon_badge.dart';
-import 'package:codex_z/common/widgets/section_title.dart';
-import 'package:codex_z/common/widgets/surface_card.dart';
-import 'package:codex_z/common/widgets/workspace_surface.dart';
-import 'package:codex_z/core/constants/app_sizes.dart';
-import 'package:codex_z/core/extensions/context_extensions.dart';
-import 'package:codex_z/core/providers/locale_provider.dart';
-import 'package:codex_z/core/providers/theme_provider.dart';
+import 'package:shim/common/widgets/icon_badge.dart';
+import 'package:shim/common/widgets/section_title.dart';
+import 'package:shim/common/widgets/surface_card.dart';
+import 'package:shim/common/widgets/workspace_surface.dart';
+import 'package:shim/core/constants/app_sizes.dart';
+import 'package:shim/core/extensions/context_extensions.dart';
+import 'package:shim/core/providers/locale_provider.dart';
+import 'package:shim/core/providers/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 

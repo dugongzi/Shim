@@ -1,5 +1,5 @@
-import 'package:codex_z/core/themes/app_colors.dart';
-import 'package:codex_z/core/themes/app_fonts.dart';
+import 'package:shim/core/themes/app_colors.dart';
+import 'package:shim/core/themes/app_fonts.dart';
 import 'package:flutter/material.dart';
 
 class AppTextStyles {

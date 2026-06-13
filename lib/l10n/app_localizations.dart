@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In zh, this message translates to:
-  /// **'Codex Z'**
+  /// **'Shim'**
   String get appName;
 
   /// No description provided for @home.
@@ -137,13 +137,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeTitle.
   ///
   /// In zh, this message translates to:
-  /// **'Codex Z'**
+  /// **'Shim'**
   String get homeTitle;
 
   /// No description provided for @welcome.
   ///
   /// In zh, this message translates to:
-  /// **'Codex Z'**
+  /// **'Shim'**
   String get welcome;
 
   /// No description provided for @inject.
@@ -161,7 +161,7 @@ abstract class AppLocalizations {
   /// No description provided for @injectPanelDescription.
   ///
   /// In zh, this message translates to:
-  /// **'将 Codex Z 的控制界面注入到目标环境，用于后续连接、调试和操作。'**
+  /// **'将 Shim 的控制界面注入到目标环境，用于后续连接、调试和操作。'**
   String get injectPanelDescription;
 
   /// No description provided for @injectReadyStatus.

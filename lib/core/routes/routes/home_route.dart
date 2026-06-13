@@ -1,5 +1,5 @@
-import 'package:codex_z/features/home/presentation/pages/home_page.dart';
-import 'package:codex_z/features/settings/presentation/pages/settings_page.dart';
+import 'package:shim/features/home/presentation/pages/home_page.dart';
+import 'package:shim/features/settings/presentation/pages/settings_page.dart';
 import 'package:go_router/go_router.dart';
 
 class HomeRoute {

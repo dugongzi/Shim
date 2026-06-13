@@ -1,5 +1,5 @@
-import 'package:codex_z/core/constants/app_sizes.dart';
-import 'package:codex_z/core/extensions/context_extensions.dart';
+import 'package:shim/core/constants/app_sizes.dart';
+import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class HomeTabItem extends StatelessWidget {

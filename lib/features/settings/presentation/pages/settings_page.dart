@@ -1,4 +1,4 @@
-import 'package:codex_z/core/extensions/context_extensions.dart';
+import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 
 class SettingsPage extends StatelessWidget {

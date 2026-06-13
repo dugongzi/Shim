@@ -9,7 +9,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appName => 'Codex Z';
+  String get appName => 'Shim';
 
   @override
   String get home => '首页';
@@ -27,10 +27,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backToHome => '返回首页';
 
   @override
-  String get homeTitle => 'Codex Z';
+  String get homeTitle => 'Shim';
 
   @override
-  String get welcome => 'Codex Z';
+  String get welcome => 'Shim';
 
   @override
   String get inject => '注入';
@@ -39,7 +39,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get injectPanelTitle => '界面注入';
 
   @override
-  String get injectPanelDescription => '将 Codex Z 的控制界面注入到目标环境，用于后续连接、调试和操作。';
+  String get injectPanelDescription => '将 Shim 的控制界面注入到目标环境，用于后续连接、调试和操作。';
 
   @override
   String get injectReadyStatus => '等待注入';

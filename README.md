@@ -1,6 +1,6 @@
-# codex_z
+# shim
 
-codex
+shim
 
 ## Getting Started
 

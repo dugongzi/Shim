@@ -1,5 +1,5 @@
-import 'package:codex_z/common/pages/error_page.dart';
-import 'package:codex_z/core/routes/routes/home_route.dart';
+import 'package:shim/common/pages/error_page.dart';
+import 'package:shim/core/routes/routes/home_route.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
