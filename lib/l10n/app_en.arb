@@ -12,6 +12,12 @@
   "injectPanelTitle": "UI Injection",
   "injectPanelDescription": "Inject the Shim control surface into the target environment for connection, debugging, and operation.",
   "injectReadyStatus": "Ready to inject",
+  "injectedAtStatus": "Injected · {time}",
+  "@injectedAtStatus": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
   "readyStatus": "Ready",
   "systemLanguage": "System language",
   "chineseLanguage": "Simplified Chinese",

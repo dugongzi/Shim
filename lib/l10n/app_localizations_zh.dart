@@ -45,6 +45,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get injectReadyStatus => '等待注入';
 
   @override
+  String injectedAtStatus(String time) {
+    return '已注入 · $time';
+  }
+
+  @override
   String get readyStatus => '就绪';
 
   @override

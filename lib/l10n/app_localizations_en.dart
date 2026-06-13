@@ -46,6 +46,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get injectReadyStatus => 'Ready to inject';
 
   @override
+  String injectedAtStatus(String time) {
+    return 'Injected · $time';
+  }
+
+  @override
   String get readyStatus => 'Ready';
 
   @override

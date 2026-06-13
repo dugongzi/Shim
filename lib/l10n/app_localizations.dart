@@ -170,6 +170,12 @@ abstract class AppLocalizations {
   /// **'等待注入'**
   String get injectReadyStatus;
 
+  /// No description provided for @injectedAtStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'已注入 · {time}'**
+  String injectedAtStatus(String time);
+
   /// No description provided for @readyStatus.
   ///
   /// In zh, this message translates to:
