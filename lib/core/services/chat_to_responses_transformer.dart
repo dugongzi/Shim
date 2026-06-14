@@ -134,6 +134,10 @@ List<int> convertResponsesBodyToChat(List<int> bodyBytes, String? overrideModel)
   final maxOut = src['max_output_tokens'];
   if (maxOut is int) out['max_tokens'] = maxOut;
   if (src['temperature'] != null) out['temperature'] = src['temperature'];
+  final reasoning = src['reasoning'];
+  if (reasoning is Map && reasoning['effort'] is String) {
+    out['reasoning_effort'] = reasoning['effort'];
+  }
 
   return utf8.encode(jsonEncode(out));
 }

@@ -8,9 +8,13 @@
   const BADGE_ID = '__shim_injected_badge__';
   const MENU_ITEM_ID = '__shim_menu_item__';
   const POPOVER_ID = '__shim_popover__';
+  const PROVIDER_PICKER_ID = '__shim_provider_picker__';
+  const PROVIDER_PICKER_POPOVER_ID = '__shim_provider_picker_popover__';
 
   const BADGE_ANCHOR_SVG_D_PREFIX = 'M16.835 8.66301C16.835 7.71885';
   const SETTINGS_ANCHOR_SVG_D_PREFIX = 'M9.99944 7.24939';
+  const SEND_BUTTON_SVG_D_PREFIX = 'M9.33467 16.6663V4.93978';
+  const CODEX_MODEL_SELECTOR_FLAG = 'data-shim-hidden-codex-model-selector';
 
   const SHIM_ICON_SVG = `
     <svg viewBox="0 0 1210 1024" width="20" height="20" xmlns="http://www.w3.org/2000/svg" class="icon-xs shrink-0 opacity-75 group-focus:opacity-100 group-hover:opacity-100">
@@ -511,6 +515,11 @@
   const PROVIDER_BADGE_CLASS = '__shim_provider_badge__';
   // 当前供应商标签缓存（已含语言前缀，如「供应商：muxue」），由 bridge 拉取并定时刷新
   let shimCurrentProviderLabel = null;
+  let shimProviderState = {
+    selectedId: null,
+    reasoningEffort: 'high',
+    providers: [],
+  };
 
   function refreshCurrentProvider() {
     if (typeof window.shim !== 'function') return;
@@ -520,6 +529,521 @@
         ensureProviderBadge();
       }
     }).catch(() => {});
+  }
+
+  function refreshProviderPickerState() {
+    if (typeof window.shim !== 'function') return;
+    window.shim('/provider/list', {}).then((res) => {
+      if (res && res.code === 0 && res.data) {
+        shimProviderState = {
+          selectedId: res.data.selectedId ?? null,
+          reasoningEffort: res.data.reasoningEffort || 'high',
+          providers: Array.isArray(res.data.providers) ? res.data.providers : [],
+        };
+        updateProviderPickerButton();
+        updateProviderPickerPopover();
+        updateCodexModelSelectorVisibility();
+      }
+    }).catch(() => {});
+  }
+
+  function currentProvider() {
+    return shimProviderState.providers.find(
+      (p) => p.id === shimProviderState.selectedId,
+    ) || null;
+  }
+
+  function findProviderPickerAnchor() {
+    const paths = document.querySelectorAll('svg path');
+    for (const path of paths) {
+      const d = path.getAttribute('d');
+      if (!d || !d.startsWith(SEND_BUTTON_SVG_D_PREFIX)) continue;
+      const button = path.closest('button');
+      const group = button?.closest('.flex.shrink-0.items-center.gap-2');
+      if (button && group) return { group, button };
+    }
+    return null;
+  }
+
+  function buildProviderPickerButton() {
+    const button = document.createElement('button');
+    button.id = PROVIDER_PICKER_ID;
+    button.type = 'button';
+    button.className =
+      'no-drag cursor-interaction flex items-center gap-1 whitespace-nowrap select-none focus:outline-none rounded-full text-token-foreground';
+    Object.assign(button.style, {
+      height: '30px',
+      maxWidth: '360px',
+      padding: '0 10px',
+      border: '1px solid rgba(127, 127, 127, 0.38)',
+      background: 'rgba(127, 127, 127, 0.18)',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
+      fontSize: '13px',
+      fontWeight: '600',
+      lineHeight: '1',
+    });
+    button.addEventListener('pointerdown', (event) => {
+      if (isProviderModelClearTarget(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+    button.addEventListener('mousedown', (event) => {
+      if (isProviderModelClearTarget(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+    button.addEventListener('click', (event) => {
+      if (isProviderModelClearTarget(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      toggleProviderPickerPopover(button);
+    }, true);
+    return button;
+  }
+
+  function updateProviderPickerButton() {
+    const button = document.getElementById(PROVIDER_PICKER_ID);
+    if (!button) return;
+    const provider = currentProvider();
+    const selectedModel = provider?.selectedModel || '';
+    const providerName = provider?.name || '供应商';
+    button.innerHTML = '';
+
+    const name = document.createElement('span');
+    name.textContent = providerName;
+    Object.assign(name.style, {
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+      maxWidth: selectedModel ? '120px' : '220px',
+    });
+    button.appendChild(name);
+
+    if (selectedModel) {
+      const model = document.createElement('span');
+      model.textContent = selectedModel;
+      Object.assign(model.style, {
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        maxWidth: '170px',
+        color: 'var(--text-primary, currentColor)',
+      });
+      button.appendChild(model);
+
+      if (shouldShowShimReasoningEffort(selectedModel)) {
+        const effort = document.createElement('span');
+        effort.textContent = reasoningEffortLabel(
+          shimProviderState.reasoningEffort || 'high',
+        );
+        Object.assign(effort.style, {
+          padding: '2px 5px',
+          borderRadius: '999px',
+          background: 'rgba(59, 130, 246, 0.16)',
+          color: '#60a5fa',
+          fontSize: '11px',
+          fontWeight: '700',
+          lineHeight: '1.2',
+        });
+        button.appendChild(effort);
+      }
+
+      const clear = document.createElement('span');
+      clear.textContent = '×';
+      clear.setAttribute('data-shim-clear-model', '1');
+      clear.setAttribute('aria-label', '清除模型');
+      Object.assign(clear.style, {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '16px',
+        height: '16px',
+        borderRadius: '999px',
+        fontSize: '14px',
+        fontWeight: '700',
+      });
+      clear.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }, true);
+      clear.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (!provider?.id) return;
+        await selectProviderModel(provider.id, null);
+      }, true);
+      button.appendChild(clear);
+    }
+    updateCodexModelSelectorVisibility();
+  }
+
+  function isProviderModelClearTarget(target) {
+    return !!target?.closest?.('[data-shim-clear-model="1"]');
+  }
+
+  function selectedShimModel() {
+    const provider = currentProvider();
+    return provider?.selectedModel || '';
+  }
+
+  function supportsCodexReasoningEffort(model) {
+    const name = String(model || '').toLowerCase();
+    if (!name) return false;
+    if (
+      name.includes('image') ||
+      name.includes('img') ||
+      name.includes('dall-e') ||
+      name.includes('dalle')
+    ) {
+      return false;
+    }
+    return name.includes('gpt');
+  }
+
+  function shouldShowShimReasoningEffort(model) {
+    return supportsCodexReasoningEffort(model);
+  }
+
+  function reasoningEffortLabel(value) {
+    if (value === 'low') return '低';
+    if (value === 'medium') return '中';
+    if (value === 'xhigh') return '超高';
+    return '高';
+  }
+
+  function findCodexModelSelector() {
+    const trigger = document.querySelector(
+      'button[data-codex-intelligence-trigger="true"]',
+    );
+    if (!trigger) return null;
+    return trigger.closest('span.contents') || trigger;
+  }
+
+  function updateCodexModelSelectorVisibility() {
+    const model = selectedShimModel();
+    const shouldHide = !!model;
+    const selector =
+      findCodexModelSelector() ||
+      document.querySelector(`[${CODEX_MODEL_SELECTOR_FLAG}="1"]`);
+    if (!selector) return;
+
+    if (shouldHide) {
+      selector.setAttribute(CODEX_MODEL_SELECTOR_FLAG, '1');
+      selector.style.display = 'none';
+    } else if (selector.getAttribute(CODEX_MODEL_SELECTOR_FLAG) === '1') {
+      selector.removeAttribute(CODEX_MODEL_SELECTOR_FLAG);
+      selector.style.removeProperty('display');
+    }
+  }
+
+  function ensureProviderPicker() {
+    const anchor = findProviderPickerAnchor();
+    if (!anchor) return;
+    if (document.getElementById(PROVIDER_PICKER_ID)) {
+      updateProviderPickerButton();
+      return;
+    }
+
+    const button = buildProviderPickerButton();
+    anchor.group.insertBefore(button, anchor.button);
+    updateProviderPickerButton();
+    refreshProviderPickerState();
+  }
+
+  function toggleProviderPickerPopover(anchor) {
+    const existing = document.getElementById(PROVIDER_PICKER_POPOVER_ID);
+    if (existing) {
+      dismissProviderPickerPopover();
+      return;
+    }
+    const popover = buildProviderPickerPopover();
+    document.body.appendChild(popover);
+    positionProviderPickerPopover(popover, anchor);
+    document.addEventListener('mousedown', onProviderPickerOutside, true);
+    document.addEventListener('keydown', onProviderPickerKey, true);
+    refreshProviderPickerState();
+  }
+
+  function dismissProviderPickerPopover() {
+    document.getElementById(PROVIDER_PICKER_POPOVER_ID)?.remove();
+    document.removeEventListener('mousedown', onProviderPickerOutside, true);
+    document.removeEventListener('keydown', onProviderPickerKey, true);
+  }
+
+  function onProviderPickerOutside(event) {
+    const popover = document.getElementById(PROVIDER_PICKER_POPOVER_ID);
+    const button = document.getElementById(PROVIDER_PICKER_ID);
+    if (!popover) return;
+    if (popover.contains(event.target)) return;
+    if (button && button.contains(event.target)) return;
+    dismissProviderPickerPopover();
+  }
+
+  function onProviderPickerKey(event) {
+    if (event.key === 'Escape') dismissProviderPickerPopover();
+  }
+
+  function positionProviderPickerPopover(popover, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const popRect = popover.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.bottom + 8;
+    if (left + popRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - popRect.width - 8;
+    }
+    if (top + popRect.height > window.innerHeight - 8) {
+      top = rect.top - popRect.height - 8;
+    }
+    popover.style.left = `${Math.max(8, left)}px`;
+    popover.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function buildProviderPickerPopover() {
+    const popover = document.createElement('div');
+    popover.id = PROVIDER_PICKER_POPOVER_ID;
+    popover.className =
+      'bg-token-dropdown-background/95 text-token-foreground ring-token-border shadow-xl-spread backdrop-blur-sm';
+    Object.assign(popover.style, {
+      position: 'fixed',
+      zIndex: '2147483647',
+      width: '320px',
+      maxHeight: '420px',
+      overflow: 'auto',
+      padding: '6px',
+      borderRadius: '12px',
+      outline: '0.5px solid var(--token-border, rgba(255,255,255,0.08))',
+      boxShadow: '0 16px 42px rgba(0, 0, 0, 0.35)',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '13px',
+    });
+    renderProviderPickerPopover(popover);
+    return popover;
+  }
+
+  function updateProviderPickerPopover() {
+    const popover = document.getElementById(PROVIDER_PICKER_POPOVER_ID);
+    if (popover) renderProviderPickerPopover(popover);
+  }
+
+  function renderProviderPickerPopover(popover) {
+    popover.innerHTML = '';
+    const providers = shimProviderState.providers;
+    if (!providers.length) {
+      const empty = document.createElement('div');
+      empty.textContent = '还没有导入供应商';
+      empty.className = 'text-token-text-tertiary';
+      Object.assign(empty.style, {
+        padding: '12px',
+        textAlign: 'center',
+      });
+      popover.appendChild(empty);
+      return;
+    }
+
+    for (const provider of providers) {
+      const providerRow = document.createElement('button');
+      providerRow.type = 'button';
+      providerRow.className =
+        'no-drag cursor-interaction flex items-center gap-2 rounded-lg hover:bg-token-list-hover-background';
+      Object.assign(providerRow.style, {
+        width: '100%',
+        padding: '8px 10px',
+        border: '0',
+        background: provider.id === shimProviderState.selectedId
+          ? 'var(--token-main-surface-secondary, rgba(255,255,255,0.08))'
+          : 'transparent',
+        color: 'inherit',
+        textAlign: 'left',
+      });
+      providerRow.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        await selectProvider(provider.id);
+      }, true);
+
+      const name = document.createElement('span');
+      name.textContent = provider.name || '未命名供应商';
+      Object.assign(name.style, {
+        flex: '1',
+        minWidth: '0',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        fontWeight: provider.id === shimProviderState.selectedId ? '700' : '500',
+      });
+      providerRow.appendChild(name);
+      popover.appendChild(providerRow);
+
+      if (provider.id === shimProviderState.selectedId) {
+        const modelList = document.createElement('div');
+        Object.assign(modelList.style, {
+          margin: '0 0 4px 14px',
+          paddingLeft: '10px',
+          borderLeft: '1px solid var(--token-border, rgba(255,255,255,0.10))',
+        });
+        const models = Array.isArray(provider.models) ? provider.models : [];
+        if (!models.length) {
+          const empty = document.createElement('div');
+          empty.textContent = '该供应商没有模型';
+          empty.className = 'text-token-text-tertiary';
+          Object.assign(empty.style, { padding: '6px 8px' });
+          modelList.appendChild(empty);
+        }
+        for (const modelName of models) {
+          const modelRow = document.createElement('button');
+          modelRow.type = 'button';
+          modelRow.textContent = modelName;
+          modelRow.className =
+            'no-drag cursor-interaction rounded-md hover:bg-token-list-hover-background';
+          Object.assign(modelRow.style, {
+            display: 'block',
+            width: '100%',
+            padding: '6px 8px',
+            border: '0',
+            background: modelName === provider.selectedModel
+              ? 'var(--token-main-surface-tertiary, rgba(255,255,255,0.10))'
+              : 'transparent',
+            color: 'inherit',
+            textAlign: 'left',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontWeight: modelName === provider.selectedModel ? '700' : '400',
+          });
+          modelRow.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            await selectProviderModel(provider.id, modelName);
+            if (!shouldShowShimReasoningEffort(modelName)) {
+              dismissProviderPickerPopover();
+            }
+          }, true);
+          modelList.appendChild(modelRow);
+        }
+        if (shouldShowShimReasoningEffort(provider.selectedModel)) {
+          modelList.appendChild(buildReasoningEffortPicker(provider.id));
+        }
+        popover.appendChild(modelList);
+      }
+    }
+  }
+
+  function buildReasoningEffortPicker(providerId) {
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, {
+      marginTop: '8px',
+      padding: '8px',
+      borderRadius: '8px',
+      background: 'rgba(127, 127, 127, 0.10)',
+    });
+
+    const label = document.createElement('div');
+    label.textContent = '思考深度';
+    Object.assign(label.style, {
+      marginBottom: '6px',
+      fontSize: '12px',
+      fontWeight: '700',
+      color: 'var(--text-secondary, currentColor)',
+    });
+    wrap.appendChild(label);
+
+    const choices = document.createElement('div');
+    Object.assign(choices.style, {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gap: '4px',
+    });
+
+    const items = [
+      ['low', '低'],
+      ['medium', '中'],
+      ['high', '高'],
+      ['xhigh', '超高'],
+    ];
+    for (const [value, text] of items) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = text;
+      const selected = (shimProviderState.reasoningEffort || 'high') === value;
+      Object.assign(btn.style, {
+        height: '28px',
+        border: selected
+          ? '1px solid rgba(59, 130, 246, 0.75)'
+          : '1px solid rgba(127, 127, 127, 0.25)',
+        borderRadius: '7px',
+        background: selected
+          ? 'rgba(59, 130, 246, 0.20)'
+          : 'rgba(127, 127, 127, 0.08)',
+        color: 'inherit',
+        fontSize: '12px',
+        fontWeight: selected ? '700' : '500',
+      });
+      btn.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        await selectReasoningEffort(providerId, value);
+      }, true);
+      choices.appendChild(btn);
+    }
+    wrap.appendChild(choices);
+    return wrap;
+  }
+
+  async function selectProvider(id) {
+    const res = await window.shim('/provider/select', { id });
+    if (!res || res.code !== 0) {
+      showToast(`切换供应商失败：${res?.message || '未知错误'}`, 'error');
+      return;
+    }
+    shimProviderState = {
+      selectedId: res.data.selectedId ?? null,
+      reasoningEffort: res.data.reasoningEffort || 'high',
+      providers: Array.isArray(res.data.providers) ? res.data.providers : [],
+    };
+    updateProviderPickerButton();
+    updateProviderPickerPopover();
+    updateCodexModelSelectorVisibility();
+    refreshCurrentProvider();
+  }
+
+  async function selectProviderModel(id, model) {
+    const res = await window.shim('/provider/select-model', { id, model });
+    if (!res || res.code !== 0) {
+      showToast(`切换模型失败：${res?.message || '未知错误'}`, 'error');
+      return;
+    }
+    shimProviderState = {
+      selectedId: res.data.selectedId ?? null,
+      reasoningEffort: res.data.reasoningEffort || 'high',
+      providers: Array.isArray(res.data.providers) ? res.data.providers : [],
+    };
+    updateProviderPickerButton();
+    updateProviderPickerPopover();
+    updateCodexModelSelectorVisibility();
+    refreshCurrentProvider();
+  }
+
+  async function selectReasoningEffort(id, effort) {
+    const res = await window.shim('/provider/set-reasoning-effort', {
+      id,
+      effort,
+    });
+    if (!res || res.code !== 0) {
+      showToast(`切换思考深度失败：${res?.message || '未知错误'}`, 'error');
+      return;
+    }
+    shimProviderState = {
+      selectedId: res.data.selectedId ?? null,
+      reasoningEffort: res.data.reasoningEffort || 'high',
+      providers: Array.isArray(res.data.providers) ? res.data.providers : [],
+    };
+    updateProviderPickerButton();
+    updateProviderPickerPopover();
   }
 
   function buildProviderBadge(label) {
@@ -582,6 +1106,8 @@
     ensureBadge();
     ensureShimMenuItem();
     ensureDeleteButtons();
+    ensureProviderPicker();
+    updateCodexModelSelectorVisibility();
     ensureProviderBadge();
   }
 
@@ -625,9 +1151,13 @@
       return;
     }
     refreshCurrentProvider();
+    refreshProviderPickerState();
     if (!window.__shimProviderPollInstalled) {
       window.__shimProviderPollInstalled = true;
-      setInterval(refreshCurrentProvider, 5000);
+      setInterval(() => {
+        refreshCurrentProvider();
+        refreshProviderPickerState();
+      }, 5000);
     }
   })();
 

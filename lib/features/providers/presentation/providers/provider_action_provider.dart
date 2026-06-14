@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shim/core/services/app_storage.dart';
+import 'package:shim/core/services/bridge_service.dart';
 import 'package:shim/core/services/local_proxy_service.dart';
 import 'package:shim/features/providers/data/datasources/provider_action_datasource.dart';
 import 'package:shim/features/providers/data/repositories/provider_action_repository_impl.dart';
@@ -8,6 +9,8 @@ import 'package:shim/features/providers/domain/repositories/provider_action_repo
 import 'package:shim/features/providers/presentation/providers/provider_query_provider.dart';
 
 part 'provider_action_provider.g.dart';
+
+const _reasoningEffortKey = 'shim_reasoning_effort';
 
 /// 若代理正在运行，把当前选中的供应商热更新给代理的转发目标（零重启切换）。
 /// update/select 后调用，保证改了链接/换了供应商，运行中的代理立刻生效。
@@ -30,12 +33,15 @@ Future<void> _syncRunningProxyTarget(Ref ref) async {
       selected.apiKey.isEmpty) {
     return;
   }
+  final reasoningEffort =
+      await ref.read(appStorageProvider).getString(_reasoningEffortKey);
   proxy.setTarget(
     ProxyTarget(
       baseUrl: selected.baseUrl,
       apiKey: selected.apiKey,
       model: selected.selectedModel,
       wireApi: selected.wireApi,
+      reasoningEffort: reasoningEffort,
     ),
   );
 }
@@ -47,6 +53,109 @@ ProviderActionRepository providerActionRepository(Ref ref) {
       appStorage: ref.read(appStorageProvider),
     ),
   );
+}
+
+/// 注册 JS 侧供应商/模型选择路由。
+///
+/// 这里用普通函数而不是 @riverpod，避免新增生成代码依赖；注入前显式调用即可。
+void registerProviderActionBridgeRoutes(Ref ref) {
+  final bridge = ref.read(bridgeServiceProvider);
+  final actionRepo = ref.read(providerActionRepositoryProvider);
+  final queryRepo = ref.read(providerQueryRepositoryProvider);
+  final appStorage = ref.read(appStorageProvider);
+
+  bridge.register('/provider/list', (payload) async {
+    final providers = await queryRepo.listProviders();
+    final selectedId = await queryRepo.selectedId();
+    final reasoningEffort = await appStorage.getString(_reasoningEffortKey);
+    return _providerListPayload(providers, selectedId, reasoningEffort);
+  });
+
+  bridge.register('/provider/select', (payload) async {
+    final id = payload['id'];
+    if (id is! String || id.isEmpty) {
+      throw ArgumentError('provider id is required');
+    }
+    await actionRepo.saveSelectedId(id);
+    ref.invalidate(providerListProvider);
+    await _syncRunningProxyTarget(ref);
+
+    final providers = await queryRepo.listProviders();
+    final selectedId = await queryRepo.selectedId();
+    final reasoningEffort = await appStorage.getString(_reasoningEffortKey);
+    return _providerListPayload(providers, selectedId, reasoningEffort);
+  });
+
+  bridge.register('/provider/select-model', (payload) async {
+    final id = payload['id'];
+    if (id is! String || id.isEmpty) {
+      throw ArgumentError('provider id is required');
+    }
+    final rawModel = payload['model'];
+    final model = rawModel is String && rawModel.isNotEmpty ? rawModel : null;
+    final providers = await queryRepo.listProviders();
+    var found = false;
+    final next = providers.map<ApiProvider>((provider) {
+      if (provider.id != id) return provider;
+      found = true;
+      return provider.copyWith(selectedModel: model);
+    }).toList();
+    if (!found) throw ArgumentError('provider not found: $id');
+
+    await actionRepo.saveProviders(next);
+    await actionRepo.saveSelectedId(id);
+    ref.invalidate(providerListProvider);
+    await _syncRunningProxyTarget(ref);
+
+    final selectedId = await queryRepo.selectedId();
+    final reasoningEffort = await appStorage.getString(_reasoningEffortKey);
+    return _providerListPayload(next, selectedId, reasoningEffort);
+  });
+
+  bridge.register('/provider/set-reasoning-effort', (payload) async {
+    final rawEffort = payload['effort'];
+    final effort = rawEffort is String ? rawEffort : '';
+    if (!_isSupportedReasoningEffort(effort)) {
+      throw ArgumentError('unsupported reasoning effort: $effort');
+    }
+    await appStorage.setString(_reasoningEffortKey, effort);
+    await _syncRunningProxyTarget(ref);
+
+    final providers = await queryRepo.listProviders();
+    final selectedId = await queryRepo.selectedId();
+    return _providerListPayload(providers, selectedId, effort);
+  });
+}
+
+Map<String, dynamic> _providerListPayload(
+  List<ApiProvider> providers,
+  String? selectedId,
+  String? reasoningEffort,
+) {
+  return {
+    'selectedId': selectedId,
+    'reasoningEffort': _isSupportedReasoningEffort(reasoningEffort)
+        ? reasoningEffort
+        : 'high',
+    'providers': providers
+        .map(
+          (provider) => {
+            'id': provider.id,
+            'name': provider.name,
+            'models': provider.models,
+            'selectedModel': provider.selectedModel,
+            'wireApi': provider.wireApi,
+          },
+        )
+        .toList(),
+  };
+}
+
+bool _isSupportedReasoningEffort(String? effort) {
+  return effort == 'low' ||
+      effort == 'medium' ||
+      effort == 'high' ||
+      effort == 'xhigh';
 }
 
 /// 新增供应商；列表为空时自动选中第一个加入项。
@@ -147,6 +256,9 @@ Future<void> startTakeover(Ref ref) async {
       apiKey: selected.apiKey,
       model: selected.selectedModel,
       wireApi: selected.wireApi,
+      reasoningEffort: await ref
+          .read(appStorageProvider)
+          .getString(_reasoningEffortKey),
     ),
   );
   runningPort.value = proxy.port ?? proxyConfig.port;

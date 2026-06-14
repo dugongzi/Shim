@@ -181,6 +181,7 @@ class ReloadCodexButton extends HookConsumerWidget {
       final bridge = ref.read(bridgeServiceProvider);
       ref.read(codexSessionRouteRegistrationProvider);
       ref.read(codexSessionActionRouteRegistrationProvider);
+      ref.read(providerRouteRegistrationProvider);
 
       await cdp.connect(debugPort);
       await cdp.reloadPage();

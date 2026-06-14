@@ -31,6 +31,7 @@ class ProxyTarget {
     required this.apiKey,
     this.model,
     this.wireApi = 'responses',
+    this.reasoningEffort,
   });
 
   /// 例：https://api.muxueai.pro/v1
@@ -44,6 +45,9 @@ class ProxyTarget {
 
   /// 上游协议：'responses'（默认）| 'chat' | 'messages'
   final String wireApi;
+
+  /// GPT 文本模型的思考深度：low | medium | high | xhigh
+  final String? reasoningEffort;
 }
 
 /// 反向代理：Codex 用 HTTP 发到本地，代理按当前 target 改写后用 HTTPS 转发到真实供应商。
@@ -129,7 +133,7 @@ class LocalProxyService {
     final isMessages = target.wireApi == 'messages';
     // ignore: avoid_print
     print('[Proxy] 转发 → $upstreamUri model=${target.model ?? "(透传)"} '
-        'wire=${target.wireApi}');
+        'wire=${target.wireApi} reasoning=${target.reasoningEffort ?? "(默认)"}');
     final client = HttpClient();
     client.findProxy = (_) => 'DIRECT';
     var responseStarted = false;
@@ -144,21 +148,25 @@ class LocalProxyService {
 
       // chat/messages 协议：请求体转换；否则仅按需改写 model。
       final bodyBytes = await _collectBody(request);
+      final preparedBodyBytes = rewriteResponsesReasoningEffort(
+        bodyBytes,
+        target.reasoningEffort,
+      );
       final outBytes = isChat
           ? convertLlmProtocolBody(
-              bodyBytes,
+              preparedBodyBytes,
               from: LlmWireProtocol.responses,
               to: LlmWireProtocol.chat,
               overrideModel: target.model,
             )
           : isMessages
               ? convertLlmProtocolBody(
-                  bodyBytes,
+                  preparedBodyBytes,
                   from: LlmWireProtocol.responses,
                   to: LlmWireProtocol.messages,
                   overrideModel: target.model,
                 )
-              : rewriteJsonModel(bodyBytes, target.model);
+              : rewriteJsonModel(preparedBodyBytes, target.model);
       upstreamRequest.headers.contentLength = outBytes.length;
       upstreamRequest.add(outBytes);
       final upstreamResponse = await upstreamRequest.close();

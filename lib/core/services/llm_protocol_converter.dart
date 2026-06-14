@@ -69,6 +69,35 @@ List<int> rewriteJsonModel(List<int> bodyBytes, String? model) {
   }
 }
 
+List<int> rewriteResponsesReasoningEffort(
+  List<int> bodyBytes,
+  String? effort,
+) {
+  if (!_isSupportedReasoningEffort(effort) || bodyBytes.isEmpty) {
+    return bodyBytes;
+  }
+  try {
+    final decoded = jsonDecode(utf8.decode(bodyBytes));
+    if (decoded is! Map<String, dynamic>) return bodyBytes;
+    final reasoning = decoded['reasoning'];
+    final nextReasoning = reasoning is Map<String, dynamic>
+        ? Map<String, dynamic>.from(reasoning)
+        : <String, dynamic>{};
+    nextReasoning['effort'] = effort;
+    decoded['reasoning'] = nextReasoning;
+    return utf8.encode(jsonEncode(decoded));
+  } catch (_) {
+    return bodyBytes;
+  }
+}
+
+bool _isSupportedReasoningEffort(String? effort) {
+  return effort == 'low' ||
+      effort == 'medium' ||
+      effort == 'high' ||
+      effort == 'xhigh';
+}
+
 List<int> convertChatBodyToAnthropicMessages(
   List<int> bodyBytes,
   String? overrideModel,

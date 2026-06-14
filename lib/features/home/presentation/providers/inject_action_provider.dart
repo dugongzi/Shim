@@ -62,6 +62,7 @@ Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
   ref.read(codexSessionRouteRegistrationProvider);
   ref.read(codexSessionActionRouteRegistrationProvider);
   ref.read(providerRouteRegistrationProvider);
+  registerProviderActionBridgeRoutes(ref);
   final script = await repo.loadInjectScript();
   await cdp.connect(debugPort);
   await bridge.install(documentScripts: [script]);
@@ -82,6 +83,7 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
   ref.read(codexSessionRouteRegistrationProvider);
   ref.read(codexSessionActionRouteRegistrationProvider);
   ref.read(providerRouteRegistrationProvider);
+  registerProviderActionBridgeRoutes(ref);
 
   // 接管开关开着 → 完整接管（起代理 + 改 config）；否则释放。
   await startTakeover(ref);
