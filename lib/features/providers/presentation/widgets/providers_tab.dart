@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:shim/common/widgets/icon_badge.dart';
 import 'package:shim/common/widgets/section_title.dart';
 import 'package:shim/common/widgets/surface_card.dart';
 import 'package:shim/common/widgets/workspace_surface.dart';
 import 'package:shim/core/constants/app_sizes.dart';
 import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/features/providers/domain/models/api_provider.dart';
-import 'package:shim/features/providers/domain/models/proxy_config.dart';
 import 'package:shim/features/providers/presentation/providers/provider_action_provider.dart';
 import 'package:shim/features/providers/presentation/providers/provider_query_provider.dart';
 
@@ -20,8 +17,6 @@ class ProvidersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listAsync = ref.watch(providerListProvider);
     final state = listAsync.value;
-    final proxyAsync = ref.watch(proxyConfigProvider);
-    final proxy = proxyAsync.value ?? const ProxyConfig();
     final colorScheme = Theme.of(context).colorScheme;
 
     return WorkspaceSurface(
@@ -29,8 +24,6 @@ class ProvidersTab extends ConsumerWidget {
         clipBehavior: Clip.none,
         padding: EdgeInsets.all(AppSizes.pagePadding),
         children: [
-          _ProxyCard(proxy: proxy, isLoading: proxyAsync.isLoading),
-          SizedBox(height: AppSizes.sectionGap),
           Row(
             children: [
               const Expanded(child: SectionTitle(title: '供应商')),
@@ -179,87 +172,6 @@ class ProvidersTab extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ProxyCard extends ConsumerWidget {
-  const _ProxyCard({required this.proxy, required this.isLoading});
-
-  final ProxyConfig proxy;
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SurfaceCard(
-      padding: EdgeInsets.all(14.cw(min: 12, max: 16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconBadge(icon: Icons.route_rounded),
-              SizedBox(width: 12.cw(min: 10, max: 14)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'API 中转',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 4.ch(min: 3, max: 6)),
-                    Text(
-                      proxy.enabled
-                          ? '已接管，请求转发到选中供应商 :${proxy.port}'
-                          : '关闭时还原 config.toml',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: AppSizes.sectionGap),
-              Switch(
-                value: proxy.enabled,
-                onChanged: isLoading
-                    ? null
-                    : (value) => ref.read(
-                        setProxyEnabledProvider(enabled: value).future,
-                      ),
-              ),
-            ],
-          ),
-          if (proxy.enabled) ...[
-            SizedBox(height: 12.ch(min: 10, max: 14)),
-            TextFormField(
-              key: ValueKey('port_${proxy.port}'),
-              initialValue: proxy.port.toString(),
-              enabled: !isLoading,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                isDense: true,
-                labelText: '本地端口',
-                hintText: '8787',
-              ),
-              onFieldSubmitted: (value) {
-                final port = int.tryParse(value);
-                if (port != null) {
-                  ref.read(setProxyPortProvider(port: port).future);
-                }
-              },
-            ),
-          ],
-        ],
       ),
     );
   }

@@ -23,6 +23,15 @@
   "codexDisconnected": "未连接",
   "checkingStatus": "检测中...",
   "refresh": "刷新",
+  "proxy": "代理",
+  "proxyEnabledDescription": "已接管 :{port}",
+  "@proxyEnabledDescription": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "proxyDisabledDescription": "未启用",
+  "proxyPort": "端口",
   "desktopShortcut": "桌面快捷方式",
   "desktopShortcutDescription": "一键启动 Codex 并自动注入",
   "createShortcut": "创建快捷方式",

@@ -65,6 +65,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get refresh => '刷新';
 
   @override
+  String get proxy => '代理';
+
+  @override
+  String proxyEnabledDescription(int port) {
+    return '已接管 :$port';
+  }
+
+  @override
+  String get proxyDisabledDescription => '未启用';
+
+  @override
+  String get proxyPort => '端口';
+
+  @override
   String get desktopShortcut => '桌面快捷方式';
 
   @override

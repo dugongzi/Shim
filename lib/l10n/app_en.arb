@@ -23,6 +23,15 @@
   "codexDisconnected": "Disconnected",
   "checkingStatus": "Checking...",
   "refresh": "Refresh",
+  "proxy": "Proxy",
+  "proxyEnabledDescription": "Active on :{port}",
+  "@proxyEnabledDescription": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "proxyDisabledDescription": "Disabled",
+  "proxyPort": "Port",
   "desktopShortcut": "Desktop shortcut",
   "desktopShortcutDescription": "Launch Codex and inject in one click",
   "createShortcut": "Create shortcut",

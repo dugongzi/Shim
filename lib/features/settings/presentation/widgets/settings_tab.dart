@@ -7,7 +7,11 @@ import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/core/providers/locale_provider.dart';
 import 'package:shim/core/providers/theme_provider.dart';
 import 'package:shim/core/services/shortcut_service.dart';
+import 'package:shim/features/providers/domain/models/proxy_config.dart';
+import 'package:shim/features/providers/presentation/providers/provider_action_provider.dart';
+import 'package:shim/features/providers/presentation/providers/provider_query_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -162,6 +166,8 @@ class SettingsTab extends ConsumerWidget {
               label: Text(context.l10n.createShortcut),
             ),
           ),
+          SizedBox(height: AppSizes.itemGap),
+          const _ProxyCard(),
           SizedBox(height: AppSizes.sectionGap),
           Text(
             context.l10n.settingsPersistedDescription,
@@ -169,6 +175,92 @@ class SettingsTab extends ConsumerWidget {
               color: colorScheme.onSurfaceVariant,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProxyCard extends ConsumerWidget {
+  const _ProxyCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final proxyAsync = ref.watch(proxyConfigProvider);
+    final proxy = proxyAsync.value ?? const ProxyConfig();
+    final isLoading = proxyAsync.isLoading;
+
+    return SurfaceCard(
+      padding: EdgeInsets.all(14.cw(min: 12, max: 16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconBadge(icon: Icons.route_rounded),
+              SizedBox(width: 12.cw(min: 10, max: 14)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.proxy,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 4.ch(min: 3, max: 6)),
+                    Text(
+                      proxy.enabled
+                          ? l10n.proxyEnabledDescription(proxy.port)
+                          : l10n.proxyDisabledDescription,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppSizes.sectionGap),
+              Switch(
+                value: proxy.enabled,
+                onChanged: isLoading
+                    ? null
+                    : (value) => ref.read(
+                        setProxyEnabledProvider(enabled: value).future,
+                      ),
+              ),
+            ],
+          ),
+          if (proxy.enabled) ...[
+            SizedBox(height: 12.ch(min: 10, max: 14)),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                key: ValueKey('port_${proxy.port}'),
+                initialValue: proxy.port.toString(),
+                enabled: !isLoading,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixText: ':',
+                  labelText: l10n.proxyPort,
+                ),
+                onFieldSubmitted: (value) {
+                  final port = int.tryParse(value);
+                  if (port != null) {
+                    ref.read(setProxyPortProvider(port: port).future);
+                  }
+                },
+              ),
+            ),
+          ],
         ],
       ),
     );

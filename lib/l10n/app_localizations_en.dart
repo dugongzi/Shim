@@ -66,6 +66,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get refresh => 'Refresh';
 
   @override
+  String get proxy => 'Proxy';
+
+  @override
+  String proxyEnabledDescription(int port) {
+    return 'Active on :$port';
+  }
+
+  @override
+  String get proxyDisabledDescription => 'Disabled';
+
+  @override
+  String get proxyPort => 'Port';
+
+  @override
   String get desktopShortcut => 'Desktop shortcut';
 
   @override

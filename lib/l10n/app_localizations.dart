@@ -206,6 +206,30 @@ abstract class AppLocalizations {
   /// **'刷新'**
   String get refresh;
 
+  /// No description provided for @proxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理'**
+  String get proxy;
+
+  /// No description provided for @proxyEnabledDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接管 :{port}'**
+  String proxyEnabledDescription(int port);
+
+  /// No description provided for @proxyDisabledDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启用'**
+  String get proxyDisabledDescription;
+
+  /// No description provided for @proxyPort.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口'**
+  String get proxyPort;
+
   /// No description provided for @desktopShortcut.
   ///
   /// In zh, this message translates to:
