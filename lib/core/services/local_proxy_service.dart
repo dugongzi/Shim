@@ -66,9 +66,14 @@ class LocalProxyService {
     );
     _server = server;
     _port = server.port;
+    // ignore: avoid_print
+    print('[Proxy] 监听启动 127.0.0.1:$port');
     _subscription = server.listen(
       _handleRequest,
-      onError: (Object error, StackTrace stackTrace) {},
+      onError: (Object error, StackTrace stackTrace) {
+        // ignore: avoid_print
+        print('[Proxy] ❌ server 层错误（请求未进 handler）: $error');
+      },
     );
   }
 
@@ -84,7 +89,12 @@ class LocalProxyService {
 
   Future<void> _handleRequest(HttpRequest request) async {
     final target = _target;
+    // ignore: avoid_print
+    print('[Proxy] 收到请求 ${request.method} ${request.uri} '
+        'target=${target?.baseUrl}');
     if (target == null) {
+      // ignore: avoid_print
+      print('[Proxy] ❌ target 为 null，返回 503');
       await _closeWithStatus(request.response, HttpStatus.serviceUnavailable);
       return;
     }
@@ -94,10 +104,14 @@ class LocalProxyService {
     // 所以用 base_url 的 origin + 请求的完整 path。
     final upstreamUri = _resolveUpstreamUri(target.baseUrl, request.uri);
     if (upstreamUri == null) {
+      // ignore: avoid_print
+      print('[Proxy] ❌ 解析 upstream 失败, baseUrl=${target.baseUrl}');
       await _closeWithStatus(request.response, HttpStatus.badGateway);
       return;
     }
 
+    // ignore: avoid_print
+    print('[Proxy] 转发 → $upstreamUri');
     final client = HttpClient();
     client.findProxy = (_) => 'DIRECT';
     var responseStarted = false;
@@ -109,12 +123,16 @@ class LocalProxyService {
       await upstreamRequest.addStream(request.cast<List<int>>());
       final upstreamResponse = await upstreamRequest.close();
 
+      // ignore: avoid_print
+      print('[Proxy] 上游响应 ${upstreamResponse.statusCode} ← $upstreamUri');
       request.response.statusCode = upstreamResponse.statusCode;
       request.response.reasonPhrase = upstreamResponse.reasonPhrase;
       _copyResponseHeaders(upstreamResponse, request.response);
       responseStarted = true;
       await upstreamResponse.cast<List<int>>().pipe(request.response);
     } catch (error) {
+      // ignore: avoid_print
+      print('[Proxy] ❌ 转发异常: $error');
       if (!responseStarted) {
         await _closeWithStatus(request.response, HttpStatus.badGateway);
       }

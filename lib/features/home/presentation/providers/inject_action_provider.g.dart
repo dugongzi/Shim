@@ -490,7 +490,7 @@ final class LaunchAndInjectProvider
   }
 }
 
-String _$launchAndInjectHash() => r'5f3c8a91f66acdc2ba01e4dea4b55bc96aab3dda';
+String _$launchAndInjectHash() => r'8fb8a6c2d5211899e1b92019a133dc2126951e87';
 
 /// 完整流程：
 /// - 端口活 → 直接连上现有 Codex 并注入

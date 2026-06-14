@@ -93,6 +93,12 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
   if (!ref.mounted) return;
   final selected = providerList.selected;
 
+  // ignore: avoid_print
+  print('[Inject] proxyConfig.enabled=${proxyConfig.enabled}, '
+      'selected=${selected?.name}, baseUrl=${selected?.baseUrl}, '
+      'hasKey=${selected?.apiKey.isNotEmpty}, '
+      'localProxyUrl=${proxyConfig.localProxyUrl}');
+
   // 接管开启：先起反向代理 + 设转发目标 + 改写 config.toml 的 base_url。
   // base_url 指向本地代理后，Codex 的 app-server 就会把模型请求发到代理，
   // 代理再按选中供应商转发到真实地址（零重启切换）。
@@ -100,6 +106,8 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
       selected != null &&
       selected.baseUrl.isNotEmpty &&
       selected.apiKey.isNotEmpty) {
+    // ignore: avoid_print
+    print('[Inject] → 进入接管分支');
     await proxy.start(
       port: proxyConfig.port,
       target: ProxyTarget(
