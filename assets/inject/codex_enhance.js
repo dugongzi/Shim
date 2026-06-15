@@ -616,15 +616,57 @@
     return button;
   }
 
+  function providerProtocolValue(provider) {
+    const value = provider?.protocol || provider?.upstreamProtocol || 'responses';
+    if (value === 'chat' || value === 'messages') return value;
+    return 'responses';
+  }
+
+  function providerProtocolLabel(protocol) {
+    if (protocol === 'chat') return 'Chat';
+    if (protocol === 'messages') return 'Messages';
+    return 'Responses';
+  }
+
+  function buildProviderProtocolChip(protocol) {
+    const chip = document.createElement('span');
+    chip.textContent = providerProtocolLabel(protocol);
+    Object.assign(chip.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: '0 0 auto',
+      height: '20px',
+      padding: '0 6px',
+      borderRadius: '999px',
+      background: protocol === 'messages'
+        ? 'rgba(16, 185, 129, 0.16)'
+        : protocol === 'chat'
+          ? 'rgba(59, 130, 246, 0.16)'
+          : 'rgba(127, 127, 127, 0.14)',
+      color: protocol === 'messages'
+        ? '#34d399'
+        : protocol === 'chat'
+          ? '#60a5fa'
+          : 'var(--text-secondary, currentColor)',
+      fontSize: '11px',
+      fontWeight: '700',
+      lineHeight: '1',
+      whiteSpace: 'nowrap',
+    });
+    return chip;
+  }
   function updateProviderPickerButton() {
     const button = document.getElementById(PROVIDER_PICKER_ID);
     if (!button) return;
     const provider = currentProvider();
     const selectedModel = provider?.selectedModel || '';
     const providerName = provider?.name || '供应商';
+    const protocol = providerProtocolValue(provider);
     const renderKey = [
       provider?.id || '',
       providerName,
+      protocol,
       selectedModel,
       shimProviderState.reasoningEffort || 'high',
     ].join('|');
@@ -634,6 +676,8 @@
     }
     button.setAttribute('data-shim-render-key', renderKey);
     button.innerHTML = '';
+
+    button.appendChild(buildProviderProtocolChip(protocol));
 
     const name = document.createElement('span');
     name.textContent = providerName;
@@ -1196,3 +1240,6 @@
   })();
 
 })();
+
+
+

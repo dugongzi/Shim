@@ -22,12 +22,22 @@ class ProviderQueryDatasource {
     final Object? decoded = jsonDecode(raw);
     if (decoded is! List) return const [];
     return decoded.whereType<Map>().map((item) {
-      return ApiProviderDto.fromJson(
-        item.map((key, value) => MapEntry(key.toString(), value)),
-      );
+      return ApiProviderDto.fromJson(_normalizeProviderJson(item));
     }).toList();
   }
 
+  Map<String, Object?> _normalizeProviderJson(Map source) {
+    final json = source.map((key, value) => MapEntry(key.toString(), value));
+    json['upstreamProtocol'] = _normalizeProtocol(
+      json['upstreamProtocol'] ?? json['wire' 'Api'],
+    );
+    return json;
+  }
+
+  String _normalizeProtocol(Object? value) {
+    if (value == 'chat' || value == 'messages') return value as String;
+    return 'responses';
+  }
   Future<String?> selectedId() {
     return appStorage.getString(_selectedKey);
   }
@@ -82,4 +92,8 @@ class ProviderQueryDatasource {
     return ids;
   }
 }
+
+
+
+
 

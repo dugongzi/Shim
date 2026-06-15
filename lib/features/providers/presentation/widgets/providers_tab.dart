@@ -256,7 +256,7 @@ class _ProviderEditDialogState extends State<_ProviderEditDialog> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  '协议',
+                  '供应商格式',
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
                 const SizedBox(height: 6),
@@ -437,4 +437,5 @@ class _ProviderCard extends StatelessWidget {
     );
   }
 }
+
 
