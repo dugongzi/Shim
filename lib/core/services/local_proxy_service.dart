@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:shim/core/services/anthropic_messages_stream_to_responses_transformer.dart';
+import 'package:shim/core/services/app_log_service.dart';
 import 'package:shim/core/services/chat_stream_to_responses_transformer.dart';
 import 'package:shim/core/services/llm_protocol_converter.dart';
 import 'package:shim/core/services/llm_protocol_proxy_spec.dart';
@@ -60,6 +61,12 @@ class LocalProxyService {
 
   void setTarget(ProxyTarget target) {
     _target = target;
+    AppLogService.instance.info(
+      'Proxy',
+      '已切换代理目标',
+      details:
+          'baseUrl=${target.baseUrl}\nmodel=${target.model ?? "(passthrough)"}\nprotocol=${target.upstreamProtocol}',
+    );
   }
 
   Future<void> start({required int port, ProxyTarget? target}) async {
@@ -74,13 +81,15 @@ class LocalProxyService {
     );
     _server = server;
     _port = server.port;
-    // ignore: avoid_print
-    print('[Proxy] listening 127.0.0.1:$port');
+    AppLogService.instance.info('Proxy', '监听启动 127.0.0.1:$port');
     _subscription = server.listen(
       _handleRequest,
       onError: (Object error, StackTrace stackTrace) {
-        // ignore: avoid_print
-        print('[Proxy] server error before handler: $error');
+        AppLogService.instance.error(
+          'Proxy',
+          'server 层错误（请求未进 handler）',
+          details: '$error',
+        );
       },
     );
   }
@@ -93,12 +102,18 @@ class LocalProxyService {
     _port = null;
     await subscription?.cancel();
     await server?.close(force: true);
+    if (server != null) {
+      AppLogService.instance.info('Proxy', '监听已停止');
+    }
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
     final target = _target;
-    // ignore: avoid_print
-    print('[Proxy] request ${request.method} ${request.uri} target=${target?.baseUrl}');
+    AppLogService.instance.info(
+      'Proxy',
+      '收到请求 ${request.method} ${request.uri}',
+      details: 'target=${target?.baseUrl}',
+    );
     if (target == null) {
       await _closeWithStatus(request.response, HttpStatus.serviceUnavailable);
       return;
@@ -113,14 +128,16 @@ class LocalProxyService {
         upstreamProtocol: target.upstreamProtocol,
       );
     } catch (error) {
-      // ignore: avoid_print
-      print('[Proxy] invalid upstream target: $error');
+      AppLogService.instance.error('Proxy', '上游目标解析失败', details: '$error');
       await _closeWithStatus(request.response, HttpStatus.badGateway);
       return;
     }
 
-    // ignore: avoid_print
-    print('[Proxy] forwarding to ${spec.uri} model=${target.model ?? "(passthrough)"}');
+    AppLogService.instance.info(
+      'Proxy',
+      '转发到 ${spec.uri}',
+      details: 'model=${target.model ?? "(passthrough)"} protocol=${target.upstreamProtocol}',
+    );
 
     final client = HttpClient();
     client.findProxy = (_) => 'DIRECT';
@@ -144,8 +161,11 @@ class LocalProxyService {
       upstreamRequest.add(outBytes);
 
       final upstreamResponse = await upstreamRequest.close();
-      // ignore: avoid_print
-      print('[Proxy] upstream ${upstreamResponse.statusCode} ${upstreamResponse.headers.contentType}');
+      AppLogService.instance.info(
+        'Proxy',
+        '上游响应 ${upstreamResponse.statusCode}',
+        details: '${upstreamResponse.headers.contentType}',
+      );
 
       if (upstreamResponse.statusCode == HttpStatus.ok) {
         final transformed = await _tryTransformStream(
@@ -165,8 +185,7 @@ class LocalProxyService {
       responseStarted = true;
       await upstreamResponse.cast<List<int>>().pipe(request.response);
     } catch (error) {
-      // ignore: avoid_print
-      print('[Proxy] forwarding error: $error');
+      AppLogService.instance.error('Proxy', '转发异常', details: '$error');
       if (!responseStarted) {
         await _closeWithStatus(request.response, HttpStatus.badGateway);
       }

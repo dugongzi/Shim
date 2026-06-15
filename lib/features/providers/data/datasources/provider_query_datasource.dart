@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:shim/core/services/app_log_service.dart';
 import 'package:shim/core/services/app_storage.dart';
 import 'package:shim/features/providers/data/models/api_provider_dto.dart';
 
@@ -28,8 +29,9 @@ class ProviderQueryDatasource {
 
   Map<String, Object?> _normalizeProviderJson(Map source) {
     final json = source.map((key, value) => MapEntry(key.toString(), value));
+    final legacyProtocol = json['wire' 'Api'];
     json['upstreamProtocol'] = _normalizeProtocol(
-      json['upstreamProtocol'] ?? json['wire' 'Api'],
+      json['upstreamProtocol'] ?? legacyProtocol,
     );
     return json;
   }
@@ -38,6 +40,7 @@ class ProviderQueryDatasource {
     if (value == 'chat' || value == 'messages') return value as String;
     return 'responses';
   }
+
   Future<String?> selectedId() {
     return appStorage.getString(_selectedKey);
   }
@@ -64,20 +67,20 @@ class ProviderQueryDatasource {
         responseType: ResponseType.plain,
       ),
     );
-    // 禁用系统代理直连，避免 VPN 把请求劫持到返回 HTML 的页面
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
       client.findProxy = (uri) => 'DIRECT';
       return client;
     };
     final url = '$trimmed/models';
-    // ignore: avoid_print
-    print('[FetchModels] GET $url');
+    AppLogService.instance.info('FetchModels', 'GET $url');
     final response = await dio.getUri<String>(Uri.parse(url));
     final body = response.data;
-    // ignore: avoid_print
-    print('[FetchModels] status=${response.statusCode} '
-        'len=${body?.length} head=${body?.substring(0, body.length.clamp(0, 120))}');
+    AppLogService.instance.info(
+      'FetchModels',
+      'status=${response.statusCode}',
+      details: 'len=${body?.length} head=${body?.substring(0, body.length.clamp(0, 120))}',
+    );
     if (body == null || body.isEmpty) return const [];
     final decoded = jsonDecode(body);
     if (decoded is! Map<String, dynamic>) return const [];
@@ -92,8 +95,3 @@ class ProviderQueryDatasource {
     return ids;
   }
 }
-
-
-
-
-

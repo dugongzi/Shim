@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shim/core/services/app_log_service.dart';
 import 'package:shim/core/services/app_storage.dart';
 import 'package:shim/core/services/bridge_service.dart';
 import 'package:shim/core/services/local_proxy_service.dart';
@@ -77,6 +78,7 @@ void registerProviderActionBridgeRoutes(Ref ref) {
       throw ArgumentError('provider id is required');
     }
     await actionRepo.saveSelectedId(id);
+    AppLogService.instance.info('Provider', '选中供应商', details: id);
     ref.invalidate(providerListProvider);
     await _syncRunningProxyTarget(ref);
 
@@ -103,7 +105,9 @@ void registerProviderActionBridgeRoutes(Ref ref) {
     if (!found) throw ArgumentError('provider not found: $id');
 
     await actionRepo.saveProviders(next);
+    AppLogService.instance.info('Provider', '切换模型', details: ' -> ');
     await actionRepo.saveSelectedId(id);
+    AppLogService.instance.info('Provider', '选中供应商', details: id);
     ref.invalidate(providerListProvider);
     await _syncRunningProxyTarget(ref);
 
@@ -119,6 +123,7 @@ void registerProviderActionBridgeRoutes(Ref ref) {
       throw ArgumentError('unsupported reasoning effort: $effort');
     }
     await appStorage.setString(_reasoningEffortKey, effort);
+    AppLogService.instance.info('Provider', '切换思考深度', details: effort);
     await _syncRunningProxyTarget(ref);
 
     final providers = await queryRepo.listProviders();
@@ -290,4 +295,6 @@ Future<void> setProxyPort(Ref ref, {required int port}) async {
   await repo.saveProxyPort(port.clamp(1, 65535));
   ref.invalidate(proxyConfigProvider);
 }
+
+
 
