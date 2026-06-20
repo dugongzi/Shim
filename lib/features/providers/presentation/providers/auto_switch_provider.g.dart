@@ -201,7 +201,7 @@ final class AutoSwitchRouteRegistrationProvider
 }
 
 String _$autoSwitchRouteRegistrationHash() =>
-    r'aad4343244a3a6f68ca51b2b0d7cc4491adb4178';
+    r'9674e6778bf186a692bf47c6c15ecfe1e5d7580c';
 
 /// 监听 health 变化 + 设置变化,自动评估切换。
 
@@ -239,4 +239,4 @@ final class AutoSwitchWatcherProvider
   }
 }
 
-String _$autoSwitchWatcherHash() => r'02700877bf963cc8c8ae466cb7ec18d42ee80b85';
+String _$autoSwitchWatcherHash() => r'5dff7de5dfab73852787f37e327604eb85d3f088';

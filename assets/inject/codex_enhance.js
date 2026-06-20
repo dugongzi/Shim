@@ -1395,6 +1395,10 @@
       body.appendChild(buildAutoSwitchNumberRow(L.probeIntervalSeconds || 'Interval', 'probeIntervalSeconds', L.unitSeconds || 's', 60, 1800, 30));
       body.appendChild(buildAutoSwitchNumberRow(L.slowRequestTimeoutSeconds || 'Slow th.', 'slowRequestTimeoutSeconds', L.unitSeconds || 's', 0, 120, 5));
       body.appendChild(buildAutoSwitchNumberRow(L.slowRequestSwitchThreshold || 'Slow streak', 'slowRequestSwitchThreshold', L.unitTimes || 'x', 1, 10, 1));
+      body.appendChild(buildAutoSwitchSegment(L.allowSameProviderSibling || 'Sibling fallback', 'allowSameProviderSibling', [
+        [false, L.allowSameProviderSiblingOff || 'Off'],
+        [true, L.allowSameProviderSiblingOn || 'On'],
+      ]));
 
       wrap.appendChild(body);
     }

@@ -17,6 +17,7 @@ abstract class AutoSwitchSettingsDto with _$AutoSwitchSettingsDto {
     @Default(300) int probeIntervalSeconds,
     @Default(20) int slowRequestTimeoutSeconds,
     @Default(1) int slowRequestSwitchThreshold,
+    @Default(false) bool allowSameProviderSibling,
   }) = _AutoSwitchSettingsDto;
 
   factory AutoSwitchSettingsDto.fromJson(Map<String, Object?> json) =>
@@ -32,6 +33,7 @@ abstract class AutoSwitchSettingsDto with _$AutoSwitchSettingsDto {
       probeIntervalSeconds: entity.probeIntervalSeconds,
       slowRequestTimeoutSeconds: entity.slowRequestTimeoutSeconds,
       slowRequestSwitchThreshold: entity.slowRequestSwitchThreshold,
+      allowSameProviderSibling: entity.allowSameProviderSibling,
     );
   }
 
@@ -45,6 +47,7 @@ abstract class AutoSwitchSettingsDto with _$AutoSwitchSettingsDto {
       probeIntervalSeconds: probeIntervalSeconds,
       slowRequestTimeoutSeconds: slowRequestTimeoutSeconds,
       slowRequestSwitchThreshold: slowRequestSwitchThreshold,
+      allowSameProviderSibling: allowSameProviderSibling,
     );
   }
 }

@@ -19,6 +19,8 @@ _ApiProviderDto _$ApiProviderDtoFromJson(Map<String, dynamic> json) =>
           const [],
       selectedModel: json['selectedModel'] as String?,
       upstreamProtocol: json['upstreamProtocol'] as String? ?? 'responses',
+      providerWeight: (json['providerWeight'] as num?)?.toInt() ?? 5,
+      modelWeight: (json['modelWeight'] as num?)?.toInt() ?? 5,
     );
 
 Map<String, dynamic> _$ApiProviderDtoToJson(_ApiProviderDto instance) =>
@@ -30,4 +32,6 @@ Map<String, dynamic> _$ApiProviderDtoToJson(_ApiProviderDto instance) =>
       'models': instance.models,
       'selectedModel': instance.selectedModel,
       'upstreamProtocol': instance.upstreamProtocol,
+      'providerWeight': instance.providerWeight,
+      'modelWeight': instance.modelWeight,
     };

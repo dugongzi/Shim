@@ -98,9 +98,19 @@ class AutoSwitchService {
     final candidates = _candidatesFor(
       current: currentProvider,
       providers: providers,
-      scope: settings.scope,
+      settings: settings,
     );
-    if (candidates.isEmpty) return null;
+    if (candidates.isEmpty) {
+      AppLogService.instance.warning(
+        'AutoSwitch',
+        '没有符合条件的候选,不切',
+        details: 'scope=${settings.scope} '
+            'currentFamily=${modelFamily(currentProvider.selectedModel)} '
+            'currentModel=${currentProvider.selectedModel} '
+            'allProviders=${providers.map((p) => "${p.id}:${p.selectedModel}").join(",")}',
+      );
+      return null;
+    }
 
     String? preferredTarget;
     switch (settings.strategy) {
@@ -218,7 +228,7 @@ class AutoSwitchService {
   List<_HealthyCandidate> _candidatesFor({
     required ApiProvider current,
     required List<ApiProvider> providers,
-    required String scope,
+    required AutoSwitchSettings settings,
   }) {
     final currentFamily = modelFamily(current.selectedModel);
     final result = <_HealthyCandidate>[];
@@ -227,11 +237,15 @@ class AutoSwitchService {
       // passthrough 候选(shim 里没指定 model)切过去会让 Codex 发出去的 model
       // 字段保留原家的名字,落到不匹配的上游会乱。强制要求候选明确选了 model。
       if (p.selectedModel == null || p.selectedModel!.isEmpty) continue;
-      final h = healthRepository.read(providerId: p.id);
-      if (h == null) continue;
-      if (h.status != 'healthy' && h.status != 'slow') continue;
-      if (h.latencyMs == null) continue;
-      switch (scope) {
+      // 同一家供应商(baseUrl + apiKey 相同)默认不互切,
+      // 用户在 settings 里打开 allowSameProviderSibling 才允许。
+      if (!settings.allowSameProviderSibling &&
+          p.baseUrl == current.baseUrl &&
+          p.apiKey == current.apiKey) {
+        continue;
+      }
+      // scope 过滤
+      switch (settings.scope) {
         case 'same-type':
           if (modelFamily(p.selectedModel) != currentFamily) continue;
           break;
@@ -242,9 +256,27 @@ class AutoSwitchService {
         default:
           break;
       }
-      result.add(_HealthyCandidate(provider: p, health: h));
+      // health 检查:已知 unreachable 才跳过;null/healthy/slow 都进候选池(切前 force probe 再过滤一次)
+      final h = healthRepository.read(providerId: p.id);
+      if (h != null && h.status == 'unreachable') continue;
+      // 用合成的 candidate;有 health 就用真实,没 health 用占位(后续 probe 会刷新)
+      final effectiveHealth = h ?? ProviderHealth(
+        providerId: p.id,
+        status: 'unknown',
+        latencyMs: null,
+        measuredAt: null,
+        failureStreak: 0,
+      );
+      result.add(_HealthyCandidate(provider: p, health: effectiveHealth));
     }
-    result.sort((a, b) => a.health.latencyMs!.compareTo(b.health.latencyMs!));
+    // 加权排序:score = providerWeight * modelWeight * (1000 / latencyMs)
+    // 无 latency 的家排最后(score = 0),让切前 force probe 决定。
+    double scoreOf(_HealthyCandidate c) {
+      final ms = c.health.latencyMs;
+      if (ms == null || ms <= 0) return 0;
+      return c.provider.providerWeight * c.provider.modelWeight * (1000 / ms);
+    }
+    result.sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
     return result;
   }
 

@@ -37,5 +37,11 @@ abstract class AutoSwitchSettings with _$AutoSwitchSettings {
     /// 连续慢响应几次后直接触发自动切换(绕过 failureThreshold)。
     /// 默认 1 = 1 次就切。设为 0 等价于不启用。
     @Default(1) int slowRequestSwitchThreshold,
+
+    /// 允许把"同一家供应商的其他模型条目"也当作切换候选。
+    /// 同家定义:baseUrl + apiKey 都相同。
+    /// 默认 false ── 同家不互切(避免一家整个挂了切自己等于没切)。
+    /// 用户明确知道"上游某个模型挂别的模型还能用"时再打开。
+    @Default(false) bool allowSameProviderSibling,
   }) = _AutoSwitchSettings;
 }

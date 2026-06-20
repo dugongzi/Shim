@@ -578,6 +578,30 @@ abstract class AppLocalizations {
   /// **'用 Codex 默认（不覆盖）'**
   String get providerUseDefault;
 
+  /// No description provided for @providerWeight.
+  ///
+  /// In zh, this message translates to:
+  /// **'供应商权重'**
+  String get providerWeight;
+
+  /// No description provided for @providerWeightHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动切换排序用。同 baseUrl+apiKey 的多个条目建议设相同值。1-10,默认 5'**
+  String get providerWeightHelp;
+
+  /// No description provided for @modelWeight.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型权重'**
+  String get modelWeight;
+
+  /// No description provided for @modelWeightHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动切换排序用。优先级:权重 × 1/延迟 越大越优先。1-10,默认 5'**
+  String get modelWeightHelp;
+
   /// No description provided for @providerSave.
   ///
   /// In zh, this message translates to:
@@ -787,6 +811,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'次'**
   String get autoSwitchSlowThresholdUnit;
+
+  /// No description provided for @autoSwitchAllowSibling.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许同家其他模型'**
+  String get autoSwitchAllowSibling;
+
+  /// No description provided for @autoSwitchAllowSiblingHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开后,当前家挂时也可切到同 baseUrl + apiKey 的另一个模型条目。默认关:同一家挂了切自己等于没切'**
+  String get autoSwitchAllowSiblingHelp;
 
   /// No description provided for @navLogs.
   ///

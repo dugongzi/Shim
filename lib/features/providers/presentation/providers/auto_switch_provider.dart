@@ -89,6 +89,7 @@ bool autoSwitchRouteRegistration(Ref ref) {
       probeIntervalSeconds: _readInt(payload, 'probeIntervalSeconds', 300),
       slowRequestTimeoutSeconds: _readInt(payload, 'slowRequestTimeoutSeconds', 20),
       slowRequestSwitchThreshold: _readInt(payload, 'slowRequestSwitchThreshold', 1),
+      allowSameProviderSibling: _readBool(payload, 'allowSameProviderSibling', false),
     );
     await repo.save(settings: next);
     AppLogService.instance.info(
@@ -122,12 +123,12 @@ Future<void> autoSwitchWatcher(Ref ref) async {
   AppLogService.instance.info('AutoSwitch', 'watcher 已订阅 health 变化');
 
   final sub = healthRepo.watch().listen((snapshot) async {
+    final settings = await autoRepo.read();
     AppLogService.instance.info(
       'AutoSwitch',
       '收到 health 变化事件',
-      details: 'count=${snapshot.length}',
+      details: 'count=${snapshot.length} strategy=${settings.strategy} scope=${settings.scope}',
     );
-    final settings = await autoRepo.read();
     if (settings.strategy == 'manual') {
       AppLogService.instance.info('AutoSwitch', '策略=manual,不评估');
       return;
@@ -157,6 +158,7 @@ Map<String, dynamic> _settingsPayload(AutoSwitchSettings settings, bool isZh) {
     'probeIntervalSeconds': settings.probeIntervalSeconds,
     'slowRequestTimeoutSeconds': settings.slowRequestTimeoutSeconds,
     'slowRequestSwitchThreshold': settings.slowRequestSwitchThreshold,
+    'allowSameProviderSibling': settings.allowSameProviderSibling,
     'labels': _labels(isZh),
   };
 }
@@ -173,6 +175,9 @@ Map<String, dynamic> _labels(bool isZh) {
       'probeIntervalSeconds': '周期',
       'slowRequestTimeoutSeconds': '慢响应阈值',
       'slowRequestSwitchThreshold': '慢响应次数',
+      'allowSameProviderSibling': '允许同家其他模型',
+      'allowSameProviderSiblingOn': '开',
+      'allowSameProviderSiblingOff': '关',
       'unitTimes': '次',
       'unitMs': 'ms',
       'unitSeconds': '秒',
@@ -194,6 +199,9 @@ Map<String, dynamic> _labels(bool isZh) {
     'probeIntervalSeconds': 'Interval',
     'slowRequestTimeoutSeconds': 'Slow th.',
     'slowRequestSwitchThreshold': 'Slow streak',
+    'allowSameProviderSibling': 'Sibling fallback',
+    'allowSameProviderSiblingOn': 'On',
+    'allowSameProviderSiblingOff': 'Off',
     'unitTimes': 'x',
     'unitMs': 'ms',
     'unitSeconds': 's',
@@ -216,5 +224,13 @@ int _readInt(Map<String, dynamic> payload, String key, int fallback) {
   if (v is int) return v;
   if (v is num) return v.toInt();
   if (v is String) return int.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+bool _readBool(Map<String, dynamic> payload, String key, bool fallback) {
+  final v = payload[key];
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) return v == 'true' || v == '1';
   return fallback;
 }

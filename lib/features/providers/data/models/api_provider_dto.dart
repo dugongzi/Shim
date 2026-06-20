@@ -16,6 +16,8 @@ abstract class ApiProviderDto with _$ApiProviderDto {
     @Default([]) List<String> models,
     String? selectedModel,
     @Default('responses') String upstreamProtocol,
+    @Default(5) int providerWeight,
+    @Default(5) int modelWeight,
   }) = _ApiProviderDto;
 
   factory ApiProviderDto.fromJson(Map<String, Object?> json) =>
@@ -30,6 +32,8 @@ abstract class ApiProviderDto with _$ApiProviderDto {
       models: entity.models,
       selectedModel: entity.selectedModel,
       upstreamProtocol: entity.upstreamProtocol,
+      providerWeight: entity.providerWeight,
+      modelWeight: entity.modelWeight,
     );
   }
 
@@ -42,6 +46,8 @@ abstract class ApiProviderDto with _$ApiProviderDto {
       models: models,
       selectedModel: selectedModel,
       upstreamProtocol: upstreamProtocol,
+      providerWeight: providerWeight,
+      modelWeight: modelWeight,
     );
   }
 }

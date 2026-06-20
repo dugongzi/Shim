@@ -262,6 +262,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerUseDefault => 'Use Codex default (no override)';
 
   @override
+  String get providerWeight => 'Provider weight';
+
+  @override
+  String get providerWeightHelp =>
+      'Used for auto-switch ranking. Entries sharing the same baseUrl+apiKey should normally share the same value. 1-10, default 5.';
+
+  @override
+  String get modelWeight => 'Model weight';
+
+  @override
+  String get modelWeightHelp =>
+      'Used for auto-switch ranking. Score = weight × 1/latency, higher first. 1-10, default 5.';
+
+  @override
   String get providerSave => 'Save';
 
   @override
@@ -377,6 +391,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get autoSwitchSlowThresholdUnit => 'x';
+
+  @override
+  String get autoSwitchAllowSibling => 'Same-provider fallback';
+
+  @override
+  String get autoSwitchAllowSiblingHelp =>
+      'When on, allows switching to another model entry with the same baseUrl + apiKey. Off by default: switching within the same upstream defeats the purpose.';
 
   @override
   String get navLogs => 'Logs';

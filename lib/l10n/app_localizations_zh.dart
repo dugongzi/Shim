@@ -260,6 +260,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerUseDefault => '用 Codex 默认（不覆盖）';
 
   @override
+  String get providerWeight => '供应商权重';
+
+  @override
+  String get providerWeightHelp =>
+      '自动切换排序用。同 baseUrl+apiKey 的多个条目建议设相同值。1-10,默认 5';
+
+  @override
+  String get modelWeight => '模型权重';
+
+  @override
+  String get modelWeightHelp => '自动切换排序用。优先级:权重 × 1/延迟 越大越优先。1-10,默认 5';
+
+  @override
   String get providerSave => '保存';
 
   @override
@@ -370,6 +383,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get autoSwitchSlowThresholdUnit => '次';
+
+  @override
+  String get autoSwitchAllowSibling => '允许同家其他模型';
+
+  @override
+  String get autoSwitchAllowSiblingHelp =>
+      '打开后,当前家挂时也可切到同 baseUrl + apiKey 的另一个模型条目。默认关:同一家挂了切自己等于没切';
 
   @override
   String get navLogs => '日志';

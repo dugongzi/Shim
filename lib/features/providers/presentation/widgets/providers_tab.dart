@@ -107,6 +107,8 @@ class _ProviderEditDialogState extends State<_ProviderEditDialog> {
   late List<String> _models;
   String? _selectedModel;
   late String _upstreamProtocol;
+  late int _providerWeight;
+  late int _modelWeight;
 
   @override
   void initState() {
@@ -118,6 +120,8 @@ class _ProviderEditDialogState extends State<_ProviderEditDialog> {
     _models = List.of(e?.models ?? const []);
     _selectedModel = e?.selectedModel;
     _upstreamProtocol = e?.upstreamProtocol ?? 'responses';
+    _providerWeight = e?.providerWeight ?? 5;
+    _modelWeight = e?.modelWeight ?? 5;
   }
 
   @override
@@ -200,6 +204,8 @@ class _ProviderEditDialogState extends State<_ProviderEditDialog> {
             models: _models,
             selectedModel: _selectedModel,
             upstreamProtocol: _upstreamProtocol,
+            providerWeight: _providerWeight,
+            modelWeight: _modelWeight,
           ),
         ).future,
       );
@@ -213,6 +219,8 @@ class _ProviderEditDialogState extends State<_ProviderEditDialog> {
             models: _models,
             selectedModel: _selectedModel,
             upstreamProtocol: _upstreamProtocol,
+            providerWeight: _providerWeight,
+            modelWeight: _modelWeight,
           ),
         ).future,
       );
@@ -290,6 +298,19 @@ class _ProviderEditDialogState extends State<_ProviderEditDialog> {
                   selected: {_upstreamProtocol},
                   onSelectionChanged: (v) =>
                       setState(() => _upstreamProtocol = v.first),
+                ),
+                const SizedBox(height: 14),
+                _WeightRow(
+                  label: l10n.providerWeight,
+                  help: l10n.providerWeightHelp,
+                  value: _providerWeight,
+                  onChanged: (v) => setState(() => _providerWeight = v),
+                ),
+                _WeightRow(
+                  label: l10n.modelWeight,
+                  help: l10n.modelWeightHelp,
+                  value: _modelWeight,
+                  onChanged: (v) => setState(() => _modelWeight = v),
                 ),
                 const SizedBox(height: 18),
                 Row(
@@ -531,6 +552,26 @@ class _AutoSwitchCard extends ConsumerWidget {
               settings.copyWith(slowRequestSwitchThreshold: v),
             ),
           ),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 4.ch(min: 2, max: 6)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _AutoSwitchRowLabel(
+                    label: l10n.autoSwitchAllowSibling,
+                    help: l10n.autoSwitchAllowSiblingHelp,
+                  ),
+                ),
+                Switch(
+                  value: settings.allowSameProviderSibling,
+                  onChanged: (v) => _save(
+                    ref,
+                    settings.copyWith(allowSameProviderSibling: v),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -630,6 +671,74 @@ class _AutoSwitchNumberRow extends StatelessWidget {
   }
 }
 
+class _WeightRow extends StatelessWidget {
+  const _WeightRow({
+    required this.label,
+    required this.help,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String help;
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  static const _min = 1;
+  static const _max = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Text(label, style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: help,
+                  waitDuration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    Icons.help_outline_rounded,
+                    size: 14,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            onPressed: value > _min ? () => onChanged(value - 1) : null,
+            icon: const Icon(Icons.remove_rounded),
+          ),
+          SizedBox(
+            width: 40,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          IconButton(
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            onPressed: value < _max ? () => onChanged(value + 1) : null,
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProviderCard extends StatelessWidget {
   const _ProviderCard({
     required this.provider,
@@ -669,13 +778,23 @@ class _ProviderCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    provider.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          provider.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _WeightBadge(
+                        text: 'P·${provider.providerWeight} M·${provider.modelWeight}',
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4.ch(min: 3, max: 6)),
                   Text(
@@ -706,4 +825,26 @@ class _ProviderCard extends StatelessWidget {
   }
 }
 
+class _WeightBadge extends StatelessWidget {
+  const _WeightBadge({required this.text});
+  final String text;
 
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}

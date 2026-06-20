@@ -23,5 +23,13 @@ abstract class ApiProvider with _$ApiProvider {
 
     /// Upstream protocol storage value: responses | chat | messages.
     required String upstreamProtocol,
+
+    /// Provider-level weight 1..10 (default 5). Used in auto-switch ranking:
+    /// score = providerWeight * modelWeight * (1 / latencyMs).
+    /// Higher weight = preferred candidate when current provider fails.
+    required int providerWeight,
+
+    /// Model-level weight 1..10 (default 5). Same ranking formula.
+    required int modelWeight,
   }) = _ApiProvider;
 }

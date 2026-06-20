@@ -172,6 +172,8 @@ Map<String, dynamic> _providerListPayload(
             'models': provider.models,
             'selectedModel': provider.selectedModel,
             'protocol': provider.upstreamProtocol,
+            'providerWeight': provider.providerWeight,
+            'modelWeight': provider.modelWeight,
             'health': _healthJson(healthRepo.read(providerId: provider.id)),
           },
         )

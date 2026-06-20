@@ -19,6 +19,7 @@ _AutoSwitchSettingsDto _$AutoSwitchSettingsDtoFromJson(
       (json['slowRequestTimeoutSeconds'] as num?)?.toInt() ?? 20,
   slowRequestSwitchThreshold:
       (json['slowRequestSwitchThreshold'] as num?)?.toInt() ?? 1,
+  allowSameProviderSibling: json['allowSameProviderSibling'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$AutoSwitchSettingsDtoToJson(
@@ -32,4 +33,5 @@ Map<String, dynamic> _$AutoSwitchSettingsDtoToJson(
   'probeIntervalSeconds': instance.probeIntervalSeconds,
   'slowRequestTimeoutSeconds': instance.slowRequestTimeoutSeconds,
   'slowRequestSwitchThreshold': instance.slowRequestSwitchThreshold,
+  'allowSameProviderSibling': instance.allowSameProviderSibling,
 };
