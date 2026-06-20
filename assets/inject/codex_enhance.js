@@ -1928,6 +1928,71 @@
     }
   }
 
+  const SHIM_SELF_NODE_SELECTOR = [
+    '#' + BADGE_ID,
+    '#' + MENU_ITEM_ID,
+    '#' + POPOVER_ID,
+    '#' + PROVIDER_PICKER_ID,
+    '#' + PROVIDER_PICKER_POPOVER_ID,
+    '#' + TOAST_CONTAINER_ID,
+    '#' + CONFIRM_DIALOG_ID,
+    '.' + PROVIDER_BADGE_CLASS,
+    '[data-shim-delete-added]',
+    '[data-shim-nav-handled]',
+    '[data-shim-install-ready]',
+    '[data-shim-prompt-ready]',
+    '[data-shim-clear-model]',
+  ].join(', ');
+
+  const SHIM_WATCH_TARGET_SELECTOR = [
+    '[data-app-action-sidebar-thread-row]',
+    '[data-app-action-sidebar-thread-id]',
+    'button[aria-label="归档对话"]',
+    'nav[role="navigation"]',
+    '[data-codex-intelligence-trigger]',
+    '[data-turn-key]',
+    '[role="menu"]',
+    '[role="menuitem"]',
+    '.composer-footer',
+    'button[aria-disabled="true"]',
+    'button.cursor-not-allowed',
+    'button[disabled]',
+  ].join(', ');
+
+  function isSelfManagedNode(node) {
+    if (!(node instanceof Element)) return false;
+    return !!node.matches?.(SHIM_SELF_NODE_SELECTOR) || !!node.closest?.(SHIM_SELF_NODE_SELECTOR);
+  }
+
+  function nodeTouchesWatchTarget(node) {
+    if (node.nodeType !== 1) return false;
+    if (isSelfManagedNode(node)) return false;
+    return !!node.matches?.(SHIM_WATCH_TARGET_SELECTOR) ||
+      !!node.closest?.(SHIM_WATCH_TARGET_SELECTOR) ||
+      !!node.querySelector?.(SHIM_WATCH_TARGET_SELECTOR);
+  }
+
+  function mutationTouchesWatchTarget(record) {
+    const target = record.target;
+    if (target instanceof Element && isSelfManagedNode(target)) return false;
+    if (target instanceof Element && (
+      target.matches?.(SHIM_WATCH_TARGET_SELECTOR) ||
+      target.closest?.(SHIM_WATCH_TARGET_SELECTOR)
+    )) return true;
+    for (const n of record.addedNodes) {
+      if (nodeTouchesWatchTarget(n)) return true;
+    }
+    for (const n of record.removedNodes) {
+      if (nodeTouchesWatchTarget(n)) return true;
+    }
+    return false;
+  }
+
+  function recordsRequireEnsureAll(records) {
+    if (!records || records.length === 0) return true;
+    return records.some(mutationTouchesWatchTarget);
+  }
+
   function summarizeMutations(records) {
     const summary = {
       total: records.length,
@@ -1998,6 +2063,10 @@
       const obsSeq = __shimObserverCount;
       if (__shimEnsureRunning) {
         __t('observer #' + obsSeq + ' suppressed (self)', { records: records.length });
+        return;
+      }
+      if (!recordsRequireEnsureAll(records)) {
+        __t('observer #' + obsSeq + ' filtered (irrelevant)', { records: records.length });
         return;
       }
       pendingRecords.push(...records);
