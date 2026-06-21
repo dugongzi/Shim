@@ -592,10 +592,14 @@ class _AutoSwitchRowLabel extends StatelessWidget {
         Tooltip(
           message: help,
           waitDuration: const Duration(milliseconds: 300),
-          child: Icon(
-            Icons.help_outline_rounded,
-            size: 14,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          preferBelow: false,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.help,
+            child: Icon(
+              Icons.help_outline_rounded,
+              size: 14,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -696,10 +700,14 @@ class _WeightRow extends StatelessWidget {
                 Tooltip(
                   message: help,
                   waitDuration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    Icons.help_outline_rounded,
-                    size: 14,
-                    color: colorScheme.onSurfaceVariant,
+                  preferBelow: false,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.help,
+                    child: Icon(
+                      Icons.help_outline_rounded,
+                      size: 14,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
