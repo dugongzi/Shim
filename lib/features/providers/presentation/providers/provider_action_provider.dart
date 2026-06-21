@@ -215,6 +215,7 @@ Map<String, String> _shimLabels(bool isZh) {
       'switchEffortFailed': '切换思考深度失败',
       'autoSwitchedToast': '已自动切换供应商',
       'autoSwitchMaintenanceToast': '自动切换已暂停',
+      'probeNow': '测速',
     };
   }
   return {
@@ -246,6 +247,7 @@ Map<String, String> _shimLabels(bool isZh) {
     'switchEffortFailed': 'Switch reasoning failed',
     'autoSwitchedToast': 'Provider auto-switched',
     'autoSwitchMaintenanceToast': 'Auto-switch paused',
+    'probeNow': 'Measure latency',
   };
 }
 

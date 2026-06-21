@@ -1052,6 +1052,86 @@
     if (popover) renderProviderPickerPopover(popover);
   }
 
+  function buildProbeButton(provider) {
+    // 渲染成 span (而不是 button) —— 父级 providerRow 已经是 <button>,
+    // 浏览器不允许嵌套 button。click 事件用 capture 阶段拦截,阻止冒泡到父级 selectProvider。
+    const btn = document.createElement('span');
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('aria-label', S('probeNow', 'Measure latency'));
+    btn.setAttribute('title', S('probeNow', 'Measure latency'));
+    btn.setAttribute('data-shim-probe-btn', '1');
+    Object.assign(btn.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: '0 0 auto',
+      width: '20px',
+      height: '20px',
+      marginLeft: '6px',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      color: 'var(--text-secondary, currentColor)',
+      opacity: '0.7',
+    });
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5h-1.5a5 5 0 1 1-5-5V1.5z" fill="currentColor"/>
+        <path d="M8 4.5l3 3-3 1V4.5z" fill="currentColor"/>
+      </svg>
+    `;
+    btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+    btn.addEventListener('mouseleave', () => {
+      if (btn.dataset.shimProbing !== '1') btn.style.opacity = '0.7';
+    });
+    const stopAll = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    // 阻止外层 providerRow 的 click capture 拦截到这里再触发 selectProvider
+    btn.addEventListener('pointerdown', stopAll, true);
+    btn.addEventListener('mousedown', stopAll, true);
+    btn.addEventListener('click', async (event) => {
+      stopAll(event);
+      if (btn.dataset.shimProbing === '1') return;
+      btn.dataset.shimProbing = '1';
+      btn.style.opacity = '1';
+      // 简单转圈动画
+      btn.style.transition = 'transform 0.6s linear';
+      let angle = 0;
+      const spin = setInterval(() => {
+        angle = (angle + 60) % 360;
+        btn.style.transform = `rotate(${angle}deg)`;
+      }, 100);
+      try {
+        await window.shim('/provider/health/refresh', {
+          id: provider.id,
+          force: true,
+        });
+        // 拉新的 list,弹层开着时只刷数据不重建按钮(避免破坏其它点击),
+        // 但 health chip 要更新到本行 → 我们手动只更新这一行的 chip
+        await refreshProviderPickerState({ rebuildPopover: false });
+        const updated = (shimProviderState.providers || []).find((p) => p.id === provider.id);
+        if (updated) {
+          const chip = btn.nextSibling;
+          if (chip && chip.parentElement === btn.parentElement) {
+            const newChip = buildHealthChip(updated.health);
+            btn.parentElement.replaceChild(newChip, chip);
+          }
+        }
+      } catch (err) {
+        showToast(`${err?.message || err}`, 'error');
+      } finally {
+        clearInterval(spin);
+        btn.style.transform = '';
+        btn.style.transition = '';
+        btn.dataset.shimProbing = '0';
+        btn.style.opacity = '0.7';
+      }
+    }, true);
+    return btn;
+  }
+
   function buildHealthChip(health) {
     const chip = document.createElement('span');
     Object.assign(chip.style, {
@@ -1122,6 +1202,10 @@
         textAlign: 'left',
       });
       providerRow.addEventListener('click', async (event) => {
+        // 点的是测速按钮 → 放行(让按钮自己的 listener 跑)
+        if (event.target.closest && event.target.closest('[data-shim-probe-btn="1"]')) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -1139,6 +1223,7 @@
         fontWeight: provider.id === shimProviderState.selectedId ? '700' : '500',
       });
       providerRow.appendChild(name);
+      providerRow.appendChild(buildProbeButton(provider));
       providerRow.appendChild(buildHealthChip(provider.health));
       fragment.appendChild(providerRow);
 
