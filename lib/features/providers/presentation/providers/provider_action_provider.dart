@@ -74,7 +74,14 @@ ProviderActionRepository providerActionRepository(Ref ref) {
 
 /// 注册 JS 侧供应商/模型选择路由。
 ///
-/// 这里用普通函数而不是 @riverpod，避免新增生成代码依赖；注入前显式调用即可。
+/// 通过 @Riverpod(keepAlive: true) 包一层 provider,任何持有 Ref 或 WidgetRef
+/// 的地方都可以 `ref.read(providerActionRouteRegistrationProvider)` 触发注册。
+@Riverpod(keepAlive: true)
+bool providerActionRouteRegistration(Ref ref) {
+  registerProviderActionBridgeRoutes(ref);
+  return true;
+}
+
 void registerProviderActionBridgeRoutes(Ref ref) {
   final bridge = ref.read(bridgeServiceProvider);
   final actionRepo = ref.read(providerActionRepositoryProvider);
@@ -216,6 +223,12 @@ Map<String, String> _shimLabels(bool isZh) {
       'autoSwitchedToast': '已自动切换供应商',
       'autoSwitchMaintenanceToast': '自动切换已暂停',
       'probeNow': '测速',
+      'threadMenu': '更多',
+      'threadExport': '导出对话',
+      'threadExportMarkdown': '导出为 Markdown',
+      'threadExportRaw': '导出原始数据',
+      'threadExportedToast': '已导出',
+      'threadExportFailed': '导出失败',
     };
   }
   return {
@@ -248,6 +261,12 @@ Map<String, String> _shimLabels(bool isZh) {
     'autoSwitchedToast': 'Provider auto-switched',
     'autoSwitchMaintenanceToast': 'Auto-switch paused',
     'probeNow': 'Measure latency',
+    'threadMenu': 'More',
+    'threadExport': 'Export',
+    'threadExportMarkdown': 'Export as Markdown',
+    'threadExportRaw': 'Export raw data',
+    'threadExportedToast': 'Exported',
+    'threadExportFailed': 'Export failed',
   };
 }
 

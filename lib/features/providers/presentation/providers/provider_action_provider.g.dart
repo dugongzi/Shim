@@ -57,6 +57,63 @@ final class ProviderActionRepositoryProvider
 String _$providerActionRepositoryHash() =>
     r'52fae25a25078a67d38c0aadcd1c47b3610796bd';
 
+/// 注册 JS 侧供应商/模型选择路由。
+///
+/// 通过 @Riverpod(keepAlive: true) 包一层 provider,任何持有 Ref 或 WidgetRef
+/// 的地方都可以 `ref.read(providerActionRouteRegistrationProvider)` 触发注册。
+
+@ProviderFor(providerActionRouteRegistration)
+const providerActionRouteRegistrationProvider =
+    ProviderActionRouteRegistrationProvider._();
+
+/// 注册 JS 侧供应商/模型选择路由。
+///
+/// 通过 @Riverpod(keepAlive: true) 包一层 provider,任何持有 Ref 或 WidgetRef
+/// 的地方都可以 `ref.read(providerActionRouteRegistrationProvider)` 触发注册。
+
+final class ProviderActionRouteRegistrationProvider
+    extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// 注册 JS 侧供应商/模型选择路由。
+  ///
+  /// 通过 @Riverpod(keepAlive: true) 包一层 provider,任何持有 Ref 或 WidgetRef
+  /// 的地方都可以 `ref.read(providerActionRouteRegistrationProvider)` 触发注册。
+  const ProviderActionRouteRegistrationProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'providerActionRouteRegistrationProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$providerActionRouteRegistrationHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return providerActionRouteRegistration(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$providerActionRouteRegistrationHash() =>
+    r'6cf01c8d5d2bf6a95ee3d9f0e2e88ba3acdea05f';
+
 /// 新增供应商；列表为空时自动选中第一个加入项。
 
 @ProviderFor(addProvider)

@@ -557,57 +557,211 @@
 
   const DELETE_BUTTON_FLAG = 'data-shim-delete-added';
 
+  const THREAD_MENU_ID = '__shim_thread_menu__';
+
+  function dismissThreadMenu() {
+    document.getElementById(THREAD_MENU_ID)?.remove();
+    document.removeEventListener('mousedown', __onThreadMenuOutside, true);
+    document.removeEventListener('keydown', __onThreadMenuKey, true);
+  }
+
+  function __onThreadMenuOutside(event) {
+    const menu = document.getElementById(THREAD_MENU_ID);
+    if (!menu) return;
+    if (menu.contains(event.target)) return;
+    dismissThreadMenu();
+  }
+  function __onThreadMenuKey(event) {
+    if (event.key === 'Escape') dismissThreadMenu();
+  }
+
+  function openThreadMenu(anchorBtn, row) {
+    console.log('[ShimMenu] openThreadMenu');
+    dismissThreadMenu();
+    const menu = document.createElement('div');
+    menu.id = THREAD_MENU_ID;
+    menu.className =
+      'bg-token-dropdown-background/95 text-token-foreground ring-token-border shadow-xl-spread backdrop-blur-sm';
+    Object.assign(menu.style, {
+      position: 'fixed',
+      zIndex: '2147483647',
+      minWidth: '180px',
+      padding: '6px',
+      borderRadius: '12px',
+      outline: '0.5px solid var(--token-border, rgba(255,255,255,0.08))',
+      boxShadow: '0 16px 42px rgba(0, 0, 0, 0.35)',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '13px',
+    });
+
+    function addItem({ label, icon, destructive, onClick }) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className =
+        'no-drag cursor-interaction flex items-center gap-2 rounded-md hover:bg-token-list-hover-background w-full';
+      Object.assign(item.style, {
+        minHeight: '32px',
+        padding: '6px 8px',
+        border: '0',
+        background: 'transparent',
+        color: destructive ? '#ef4444' : 'inherit',
+        textAlign: 'left',
+      });
+      const iconWrap = document.createElement('span');
+      iconWrap.style.display = 'inline-flex';
+      iconWrap.style.flex = '0 0 auto';
+      iconWrap.innerHTML = icon;
+      const text = document.createElement('span');
+      text.textContent = label;
+      text.style.flex = '1';
+      item.appendChild(iconWrap);
+      item.appendChild(text);
+      const handle = async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        console.log('[ShimMenu] item click', label);
+        dismissThreadMenu();
+        try {
+          await onClick();
+        } catch (err) {
+          console.error('[ShimMenu] onClick error', err);
+        }
+      };
+      // mousedown/pointerdown 也得吞,避免 __onThreadMenuOutside 先把菜单关掉
+      const stop = (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      };
+      item.addEventListener('mousedown', stop, true);
+      item.addEventListener('pointerdown', stop, true);
+      item.addEventListener('click', handle, true);
+      menu.appendChild(item);
+    }
+
+    const ICON_MD = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2"/><path d="M10 2.5V6h3" stroke="currentColor" stroke-width="1.2"/></svg>`;
+    const ICON_RAW = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 2h6l2 2v10H4z" stroke="currentColor" stroke-width="1.2"/><path d="M6 6h4M6 9h4M6 12h3" stroke="currentColor" stroke-width="1.2"/></svg>`;
+    const ICON_DEL = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M4.5 4l.7 9a1 1 0 0 0 1 .9h3.6a1 1 0 0 0 1-.9l.7-9" stroke="currentColor" stroke-width="1.2"/></svg>`;
+
+    addItem({
+      label: S('threadExportMarkdown', 'Export as Markdown'),
+      icon: ICON_MD,
+      onClick: () => exportThread(row, 'markdown'),
+    });
+    addItem({
+      label: S('threadExportRaw', 'Export raw data'),
+      icon: ICON_RAW,
+      onClick: () => exportThread(row, 'raw'),
+    });
+    // 分隔线
+    const sep = document.createElement('div');
+    sep.style.cssText = 'height:1px;margin:4px 6px;background:var(--token-border,rgba(255,255,255,0.10));';
+    menu.appendChild(sep);
+    addItem({
+      label: S('deleteOk', 'Delete'),
+      icon: ICON_DEL,
+      destructive: true,
+      onClick: () => deleteThread(row),
+    });
+
+    document.body.appendChild(menu);
+    // 定位:挂在 anchorBtn 下方右对齐
+    const rect = anchorBtn.getBoundingClientRect();
+    const mRect = menu.getBoundingClientRect();
+    let left = rect.right - mRect.width;
+    let top = rect.bottom + 4;
+    if (left < 8) left = 8;
+    if (top + mRect.height > window.innerHeight - 8) {
+      top = rect.top - mRect.height - 4;
+    }
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+
+    document.addEventListener('mousedown', __onThreadMenuOutside, true);
+    document.addEventListener('keydown', __onThreadMenuKey, true);
+  }
+
+  function threadIdFromRow(row) {
+    const rawId = row.getAttribute('data-app-action-sidebar-thread-id') || '';
+    return rawId.includes(':') ? rawId.split(':').slice(1).join(':') : rawId;
+  }
+
+  async function exportThread(row, format) {
+    const id = threadIdFromRow(row);
+    if (!id) {
+      showToast(S('deleteSessionIdMissing', 'Session id not found'), 'error');
+      return;
+    }
+    try {
+      const res = await window.shim('/session/export', { id, format });
+      if (res?.code !== 0) {
+        showToast(`${S('threadExportFailed', 'Export failed')}: ${res?.message || S('unknownError', 'Unknown error')}`, 'error');
+        return;
+      }
+      if (res.data?.cancelled) return; // 用户取消保存
+      showToast(S('threadExportedToast', 'Exported'), 'success');
+    } catch (err) {
+      showToast(`${S('threadExportFailed', 'Export failed')}: ${err?.message || err}`, 'error');
+    }
+  }
+
+  async function deleteThread(row) {
+    const title = row.getAttribute('data-app-action-sidebar-thread-title') ||
+      row.querySelector('[data-thread-title]')?.textContent?.trim() ||
+      S('deleteDefaultTitle', 'this thread');
+    const ok = await showDeleteConfirm(title);
+    if (!ok) return;
+    const id = threadIdFromRow(row);
+    if (!id) {
+      showToast(S('deleteSessionIdMissing', 'Session id not found'), 'error');
+      return;
+    }
+    try {
+      const res = await window.shim('/session/delete', { id });
+      if (res?.code !== 0) {
+        showToast(`${S('deleteFailed', 'Delete failed')}: ${res?.message || S('unknownError', 'Unknown error')}`, 'error');
+        return;
+      }
+      const container =
+        row.closest('[role="listitem"]') || row.closest('.after\\:block') || row;
+      container.remove();
+      showToast(S('deleteSuccess', 'Deleted'), 'success');
+    } catch (err) {
+      showToast(`${S('deleteFailed', 'Delete failed')}: ${err?.message || err}`, 'error');
+    }
+  }
+
   function buildDeleteButton(row) {
+    // 复用旧函数名(DELETE_BUTTON_FLAG 等不变),但内部改成三点菜单
     const wrapper = document.createElement('span');
     wrapper.setAttribute('data-state', 'closed');
     wrapper.className = 'contents';
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.setAttribute('aria-label', S('deleteAria', 'Delete thread'));
+    btn.setAttribute('aria-label', S('threadMenu', 'More'));
     btn.className =
       'border-token-border no-drag cursor-interaction flex items-center gap-1 border whitespace-nowrap select-none focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 rounded-full electron:rounded-md text-token-muted-foreground enabled:hover:bg-transparent data-[state=open]:bg-transparent hover:text-token-foreground border-transparent electron:p-1 electron:[&>svg]:icon-sm flex items-center justify-center p-0.5 !h-5 !w-5 !p-0 opacity-50 hover:opacity-100 focus-visible:opacity-100 [&>svg]:!h-4 [&>svg]:!w-4';
-    btn.style.color = '#ef4444';
 
     btn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8.33301 3.33301H11.667C12.0341 3.33301 12.332 3.63087 12.332 3.99805V4.66602H7.66797V3.99805C7.66797 3.63087 7.96586 3.33301 8.33301 3.33301ZM6.33789 4.66602V3.99805C6.33789 2.89623 7.23119 2.00293 8.33301 2.00293H11.667C12.7688 2.00293 13.6621 2.89623 13.6621 3.99805V4.66602H16.667C17.0342 4.66602 17.332 4.96383 17.332 5.33105C17.332 5.69826 17.0342 5.99609 16.667 5.99609H15.6191L14.7891 14.5479C14.6553 15.917 13.5045 16.9648 12.1289 16.9648H7.87109C6.49551 16.9648 5.34469 15.917 5.21094 14.5479L4.38086 5.99609H3.33301C2.96586 5.99609 2.66797 5.69826 2.66797 5.33105C2.66797 4.96383 2.96586 4.66602 3.33301 4.66602H6.33789ZM6.53516 14.4189C6.59995 15.082 7.20566 15.6348 7.87109 15.6348H12.1289C12.7944 15.6348 13.4001 15.082 13.4648 14.4189L14.2832 5.99609H5.7168L6.53516 14.4189Z" fill="currentColor"/>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <circle cx="3" cy="8" r="1.4"/>
+        <circle cx="8" cy="8" r="1.4"/>
+        <circle cx="13" cy="8" r="1.4"/>
       </svg>
     `;
 
-    btn.addEventListener('click', async (event) => {
+    btn.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const title = row.getAttribute('data-app-action-sidebar-thread-title') ||
-        row.querySelector('[data-thread-title]')?.textContent?.trim() ||
-        S('deleteDefaultTitle', 'this thread');
-      const ok = await showDeleteConfirm(title);
-      if (!ok) return;
-
-      const rawId = row.getAttribute('data-app-action-sidebar-thread-id') || '';
-      const id = rawId.includes(':') ? rawId.split(':').slice(1).join(':') : rawId;
-      if (!id) {
-        showToast(S('deleteSessionIdMissing', 'Session id not found'), 'error');
+      event.stopImmediatePropagation();
+      const existing = document.getElementById(THREAD_MENU_ID);
+      if (existing) {
+        dismissThreadMenu();
         return;
       }
-
-      btn.disabled = true;
-      try {
-        const res = await window.shim('/session/delete', { id });
-        if (res?.code !== 0) {
-          showToast(`${S('deleteFailed', 'Delete failed')}: ${res?.message || S('unknownError', 'Unknown error')}`, 'error');
-          btn.disabled = false;
-          return;
-        }
-        const container =
-          row.closest('[role="listitem"]') || row.closest('.after\\:block') || row;
-        container.remove();
-        showToast(S('deleteSuccess', 'Deleted'), 'success');
-      } catch (err) {
-        showToast(`${S('deleteFailed', 'Delete failed')}: ${err?.message || err}`, 'error');
-        btn.disabled = false;
-      }
-    });
+      openThreadMenu(btn, row);
+    }, true);
 
     wrapper.appendChild(btn);
     return wrapper;

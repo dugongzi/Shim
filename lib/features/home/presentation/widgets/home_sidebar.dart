@@ -7,8 +7,12 @@ import 'package:shim/core/services/cdp_service.dart';
 import 'package:shim/core/services/codex_launcher_service.dart';
 import 'package:shim/core/services/local_proxy_service.dart';
 import 'package:shim/features/codex_session/presentation/providers/codex_session_action_provider.dart';
+import 'package:shim/features/codex_session/presentation/providers/codex_session_export_provider.dart';
 import 'package:shim/features/codex_session/presentation/providers/codex_session_query_provider.dart';
 import 'package:shim/features/home/presentation/providers/inject_action_provider.dart';
+import 'package:shim/features/providers/presentation/providers/auto_switch_provider.dart';
+import 'package:shim/features/providers/presentation/providers/provider_action_provider.dart';
+import 'package:shim/features/providers/presentation/providers/provider_health_provider.dart';
 import 'package:shim/features/providers/presentation/providers/provider_query_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -217,7 +221,11 @@ class _ReloadCodexIcon extends HookConsumerWidget {
                 final bridge = ref.read(bridgeServiceProvider);
                 ref.read(codexSessionRouteRegistrationProvider);
                 ref.read(codexSessionActionRouteRegistrationProvider);
+                ref.read(codexSessionExportRouteRegistrationProvider);
                 ref.read(providerRouteRegistrationProvider);
+                ref.read(providerHealthRouteRegistrationProvider);
+                ref.read(autoSwitchRouteRegistrationProvider);
+                ref.read(providerActionRouteRegistrationProvider);
 
                 await cdp.connect(debugPort);
                 await cdp.reloadPage();
