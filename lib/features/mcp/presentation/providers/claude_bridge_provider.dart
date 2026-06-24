@@ -5,21 +5,26 @@ import 'package:shim/core/services/local_proxy_service.dart';
 
 part 'claude_bridge_provider.g.dart';
 
-/// 注册 Claude 桥控制路由:
+/// 注册 Claude 桥控制路由。
 ///
-/// `/claude-bridge/bind`   — 绑定一条 Claude 会话作为接续上下文,
-///                          后续每次代理转发都会在 input 首部插一条 system message
-/// `/claude-bridge/unbind` — 解绑
-/// `/claude-bridge/state`  — 读当前绑定(JS 侧用来初始化 chip)
+/// 绑定按 codex thread id 隔离 —— codex 侧栏每条对话各自有一个 Claude 桥状态。
 ///
-/// 数据存在 [LocalProxyService] 的 [LocalProxyService.claudeBinding],
-/// 单例,全局只能绑一条。
+/// `/claude-bridge/bind`   — 绑定一条 Claude 会话作为当前 codex thread 的接续上下文
+/// `/claude-bridge/unbind` — 解除当前 codex thread 的绑定
+/// `/claude-bridge/state`  — 读某个 codex thread 的绑定状态(JS chip 初始化用)
+///
+/// 数据存在 [LocalProxyService] 的 `_claudeBindings`(`Map<threadId, binding>`),
+/// 仅内存态,shim 重启清空。
 @Riverpod(keepAlive: true)
 bool claudeBridgeRouteRegistration(Ref ref) {
   final bridge = ref.read(bridgeServiceProvider);
   final proxy = ref.read(localProxyServiceProvider);
 
   bridge.register('/claude-bridge/bind', (payload) async {
+    final codexThreadId = payload['codexThreadId'];
+    if (codexThreadId is! String || codexThreadId.isEmpty) {
+      throw ArgumentError('codexThreadId is required');
+    }
     final sessionId = payload['sessionId'];
     final jsonlPath = payload['jsonlPath'];
     if (sessionId is! String || sessionId.isEmpty) {
@@ -31,33 +36,45 @@ bool claudeBridgeRouteRegistration(Ref ref) {
     final rawTitle = payload['title'];
     final title = rawTitle is String && rawTitle.isNotEmpty ? rawTitle : null;
     proxy.setClaudeBinding(
-      ClaudeBridgeBinding(
+      codexThreadId: codexThreadId,
+      binding: ClaudeBridgeBinding(
         sessionId: sessionId,
         jsonlPath: jsonlPath,
         title: title,
       ),
     );
-    return _statePayload(proxy);
+    return _statePayload(proxy, codexThreadId);
   });
 
   bridge.register('/claude-bridge/unbind', (payload) async {
-    proxy.setClaudeBinding(null);
-    return _statePayload(proxy);
+    final codexThreadId = payload['codexThreadId'];
+    if (codexThreadId is! String || codexThreadId.isEmpty) {
+      throw ArgumentError('codexThreadId is required');
+    }
+    proxy.clearClaudeBinding(codexThreadId: codexThreadId);
+    return _statePayload(proxy, codexThreadId);
   });
 
   bridge.register('/claude-bridge/state', (payload) async {
-    return _statePayload(proxy);
+    final codexThreadId = payload['codexThreadId'];
+    // /state 允许 codexThreadId 为空 — 此时返回 bound:false,让 JS 知道当前没活跃 thread
+    final id = codexThreadId is String ? codexThreadId : '';
+    return _statePayload(proxy, id);
   });
 
   AppLogService.instance.info('ClaudeBridge', '路由已注册');
   return true;
 }
 
-Map<String, dynamic> _statePayload(LocalProxyService proxy) {
-  final b = proxy.claudeBinding;
-  if (b == null) return const {'bound': false};
+Map<String, dynamic> _statePayload(LocalProxyService proxy, String codexThreadId) {
+  if (codexThreadId.isEmpty) return const {'bound': false};
+  final b = proxy.claudeBindingFor(codexThreadId);
+  if (b == null) {
+    return {'bound': false, 'codexThreadId': codexThreadId};
+  }
   return {
     'bound': true,
+    'codexThreadId': codexThreadId,
     'sessionId': b.sessionId,
     'jsonlPath': b.jsonlPath,
     'title': b.title,

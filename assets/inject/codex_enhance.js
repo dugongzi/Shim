@@ -2658,8 +2658,17 @@
       <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(title || thread.sessionId)}</div>
     `;
     row.addEventListener('click', async () => {
+      const codexThreadId = currentCodexThreadId();
+      if (!codexThreadId) {
+        showToast(
+          S('claudeBridgeNoActiveThread', 'Open or select a codex conversation first'),
+          'error',
+        );
+        return;
+      }
       try {
         const res = await window.shim('/claude-bridge/bind', {
+          codexThreadId: codexThreadId,
           sessionId: thread.sessionId,
           jsonlPath: thread.jsonlPath,
           title: title,
@@ -2668,7 +2677,7 @@
           showToast(`${S('claudeBridgeBindFailed', 'Bind failed')}: ${res?.message || S('unknownError', 'Unknown error')}`, 'error');
           return;
         }
-        shimClaudeBridgeState = res.data || { bound: false };
+        applyClaudeBridgeStateForThread(codexThreadId, res.data || { bound: false });
         ensureClaudeBridgeChip();
         showToast(
           S('claudeBridgeBoundToast', 'Bound as continuation context') +
@@ -2682,61 +2691,107 @@
     return row;
   }
 
-  // ========== Claude 桥:composer 旁的绑定状态 chip ==========
-  // 单一全局绑定:dart 侧 LocalProxyService 持有 ClaudeBridgeBinding。
-  // - 进页面/刷新时通过 /claude-bridge/state 拉一次,后续 ensure 时只复用缓存
-  // - 用户点会话 row → /claude-bridge/bind → 刷新 chip
-  // - 用户点 chip 的 × → /claude-bridge/unbind → 静默移除 chip
+  // ========== Claude 桥:composer 旁的绑定状态 chip(按 codex thread 维度) ==========
+  // 每个 codex 侧栏对话各自有自己的 Claude 桥状态。dart 侧按 thread id 存。
+  // - 进 thread / 切 thread → 拉这个 thread 的状态,刷新 chip
+  // - 点会话 row → /claude-bridge/bind { codexThreadId } → 当前 thread 绑上
+  // - 点 chip × → /claude-bridge/unbind { codexThreadId } → 只解绑当前 thread
   const CLAUDE_BRIDGE_CHIP_ID = '__shim_claude_bridge_chip__';
-  let shimClaudeBridgeState = { bound: false };
-  let shimClaudeBridgeStateLoaded = false;
+  // 本地缓存:每个 thread 最近一次拉到的状态,避免 ensure 频繁打 bridge。
+  // key = codexThreadId,value = { bound, sessionId?, title?, jsonlPath? }
+  const shimClaudeBridgeStateCache = new Map();
+  // 正在拉取的 thread 集合,去重并发
+  const shimClaudeBridgeFetching = new Set();
+  // 上次 chip 渲染基于的 thread,变化就强制重建
+  let shimClaudeBridgeLastRenderedThreadId = null;
 
-  function refreshClaudeBridgeState() {
+  /// 找当前 codex 侧栏 active 那条 thread。
+  /// 没 active(比如刚开新对话还没创建 thread)时返回 null。
+  function currentCodexThreadId() {
+    const active = document.querySelector('[data-app-action-sidebar-thread-active="true"]');
+    if (!active) return null;
+    const raw = active.getAttribute('data-app-action-sidebar-thread-id') || '';
+    // 形如 "local:019ef84a-..." → 取冒号后半段
+    return raw.includes(':') ? raw.split(':').slice(1).join(':') : raw;
+  }
+
+  function applyClaudeBridgeStateForThread(threadId, state) {
+    if (!threadId) return;
+    shimClaudeBridgeStateCache.set(threadId, state || { bound: false });
+  }
+
+  function fetchClaudeBridgeStateForThread(threadId) {
+    if (!threadId) return Promise.resolve();
     if (typeof window.shim !== 'function') return Promise.resolve();
-    return window.shim('/claude-bridge/state', {}).then((res) => {
+    if (shimClaudeBridgeFetching.has(threadId)) return Promise.resolve();
+    shimClaudeBridgeFetching.add(threadId);
+    return window.shim('/claude-bridge/state', { codexThreadId: threadId }).then((res) => {
       if (res && res.code === 0 && res.data) {
-        shimClaudeBridgeState = res.data;
-        ensureClaudeBridgeChip();
+        applyClaudeBridgeStateForThread(threadId, res.data);
+        // 拉的就是当前显示的 thread → 刷 chip
+        if (threadId === currentCodexThreadId()) {
+          ensureClaudeBridgeChip();
+        }
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      shimClaudeBridgeFetching.delete(threadId);
+    });
   }
 
   function ensureClaudeBridgeChip() {
-    if (!shimClaudeBridgeStateLoaded) {
-      shimClaudeBridgeStateLoaded = true;
-      refreshClaudeBridgeState();
+    const threadId = currentCodexThreadId();
+    if (!threadId) {
+      // 没活跃 thread → chip 不显示
+      document.getElementById(CLAUDE_BRIDGE_CHIP_ID)?.remove();
+      shimClaudeBridgeLastRenderedThreadId = null;
       return;
     }
+    // 没缓存就先拉一次,拉到回调里再 ensure
+    if (!shimClaudeBridgeStateCache.has(threadId)) {
+      fetchClaudeBridgeStateForThread(threadId);
+      // 切到新 thread 时立刻移除老 chip,避免显示前一个 thread 的标题
+      if (shimClaudeBridgeLastRenderedThreadId !== threadId) {
+        document.getElementById(CLAUDE_BRIDGE_CHIP_ID)?.remove();
+        shimClaudeBridgeLastRenderedThreadId = threadId;
+      }
+      return;
+    }
+    const state = shimClaudeBridgeStateCache.get(threadId);
     const existing = document.getElementById(CLAUDE_BRIDGE_CHIP_ID);
-    if (!shimClaudeBridgeState.bound) {
+    if (!state || !state.bound) {
       existing?.remove();
+      shimClaudeBridgeLastRenderedThreadId = threadId;
       return;
     }
     const anchor = findProviderPickerAnchor();
     if (!anchor) return;
-    if (existing && existing.parentElement === anchor.group) {
+    // 同 thread + 已挂 → 只更标题文字
+    if (existing
+        && existing.parentElement === anchor.group
+        && shimClaudeBridgeLastRenderedThreadId === threadId) {
       const labelEl = existing.querySelector('[data-shim-bridge-label]');
       if (labelEl) {
-        const title = shimClaudeBridgeState.title || shimClaudeBridgeState.sessionId || '';
+        const title = state.title || state.sessionId || '';
         const expected = `${S('claudeBridgeChipPrefix', 'Claude:')} ${title}`;
         if (labelEl.textContent !== expected) labelEl.textContent = expected;
       }
       return;
     }
     existing?.remove();
-    const chip = buildClaudeBridgeChip();
-    // 挂在 provider picker 同一行的最左边,picker 按钮之前
+    const chip = buildClaudeBridgeChip(threadId, state);
     const pickerBtn = document.getElementById(PROVIDER_PICKER_ID);
     if (pickerBtn && pickerBtn.parentElement === anchor.group) {
       anchor.group.insertBefore(chip, pickerBtn);
     } else {
       anchor.group.insertBefore(chip, anchor.button);
     }
+    shimClaudeBridgeLastRenderedThreadId = threadId;
   }
 
-  function buildClaudeBridgeChip() {
+  function buildClaudeBridgeChip(threadId, state) {
     const chip = document.createElement('span');
     chip.id = CLAUDE_BRIDGE_CHIP_ID;
+    chip.setAttribute('data-shim-bridge-thread', threadId);
     Object.assign(chip.style, {
       display: 'inline-flex',
       alignItems: 'center',
@@ -2753,7 +2808,7 @@
       maxWidth: '220px',
       whiteSpace: 'nowrap',
     });
-    const title = shimClaudeBridgeState.title || shimClaudeBridgeState.sessionId || '';
+    const title = state.title || state.sessionId || '';
     const label = document.createElement('span');
     label.setAttribute('data-shim-bridge-label', '1');
     label.textContent = `${S('claudeBridgeChipPrefix', 'Claude:')} ${title}`;
@@ -2791,16 +2846,18 @@
     close.addEventListener('click', async (event) => {
       stopAll(event);
       try {
-        const res = await window.shim('/claude-bridge/unbind', {});
+        const res = await window.shim('/claude-bridge/unbind', {
+          codexThreadId: threadId,
+        });
         if (res && res.code === 0) {
-          shimClaudeBridgeState = res.data || { bound: false };
-          ensureClaudeBridgeChip();
+          applyClaudeBridgeStateForThread(threadId, res.data || { bound: false });
+        } else {
+          applyClaudeBridgeStateForThread(threadId, { bound: false });
         }
       } catch (_) {
-        // 静默,即使后端没回,chip 也直接消失
-        shimClaudeBridgeState = { bound: false };
-        ensureClaudeBridgeChip();
+        applyClaudeBridgeStateForThread(threadId, { bound: false });
       }
+      ensureClaudeBridgeChip();
     }, true);
     chip.appendChild(close);
     return chip;

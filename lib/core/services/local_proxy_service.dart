@@ -96,20 +96,37 @@ class LocalProxyService {
 
   ProxyTarget? _target;
 
-  /// 当前生效的 Claude 会话接续绑定。null = 未绑定。
-  ClaudeBridgeBinding? _claudeBinding;
+  /// 每个 codex thread id 各自独立的 Claude 桥绑定。
+  /// codex 侧栏每条会话对应一个 thread id(请求 header `session-id`),只对绑定过的
+  /// thread 注入接续 prompt,其他 thread 不受影响。
+  final Map<String, ClaudeBridgeBinding> _claudeBindings = {};
 
-  ClaudeBridgeBinding? get claudeBinding => _claudeBinding;
+  ClaudeBridgeBinding? claudeBindingFor(String codexThreadId) =>
+      _claudeBindings[codexThreadId];
 
-  void setClaudeBinding(ClaudeBridgeBinding? binding) {
-    _claudeBinding = binding;
-    if (binding == null) {
-      AppLogService.instance.info('ClaudeBridge', '已解绑');
-    } else {
+  Map<String, ClaudeBridgeBinding> get claudeBindingsSnapshot =>
+      Map.unmodifiable(_claudeBindings);
+
+  void setClaudeBinding({
+    required String codexThreadId,
+    required ClaudeBridgeBinding binding,
+  }) {
+    _claudeBindings[codexThreadId] = binding;
+    AppLogService.instance.info(
+      'ClaudeBridge',
+      '已绑定',
+      details:
+          'codexThread=$codexThreadId claudeSession=${binding.sessionId} jsonlPath=${binding.jsonlPath}',
+    );
+  }
+
+  void clearClaudeBinding({required String codexThreadId}) {
+    final removed = _claudeBindings.remove(codexThreadId);
+    if (removed != null) {
       AppLogService.instance.info(
         'ClaudeBridge',
-        '已绑定',
-        details: 'sessionId=${binding.sessionId} jsonlPath=${binding.jsonlPath}',
+        '已解绑',
+        details: 'codexThread=$codexThreadId',
       );
     }
   }
@@ -326,7 +343,12 @@ class LocalProxyService {
         '请求 body',
         details: _summarizeBody(bodyBytes),
       );
-      final binding = _claudeBinding;
+      // 按 codex 请求头 session-id 查这个 thread 自己的 Claude 桥绑定。
+      // 没绑就不注入,跟"全局兜底"明确切开。
+      final codexThreadId = request.headers.value('session-id') ?? '';
+      final binding = codexThreadId.isEmpty
+          ? null
+          : _claudeBindings[codexThreadId];
       final injectedSystem = binding == null
           ? null
           : _buildClaudeBridgeSystemMessage(binding);
@@ -335,11 +357,8 @@ class LocalProxyService {
           'ClaudeBridge',
           '注入 system message',
           details:
-              'sessionId=${binding!.sessionId} promptBytes=${utf8.encode(injectedSystem).length}',
+              'codexThread=$codexThreadId claudeSession=${binding!.sessionId} promptBytes=${utf8.encode(injectedSystem).length}',
         );
-        // 关键诊断:把 codex 自己发的 input[0] (它的 developer message 模板)
-        // 跟我注入的那条 dump 出来对比格式。
-        // 如果两者结构不同 → 我塞的格式不被上游接受 → 503。
         _dumpInputItemComparison(bodyBytes, injectedSystem);
       }
       final outBytes = convertLlmProtocolBody(
