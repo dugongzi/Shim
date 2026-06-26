@@ -28,9 +28,11 @@ final localProxyServiceProvider = Provider<LocalProxyService>((ref) {
 
 /// Hook 给 ProbeService:由 presentation 层启动时调用,把 success/failure 回调
 /// 接到 LocalProxyService。这里不直接依赖 ProbeService,避免 core/services 反向依赖 features/。
-typedef ProxyRequestFailureHook = void Function(String providerId, String reason);
+typedef ProxyRequestFailureHook =
+    void Function(String providerId, String reason);
 typedef ProxyRequestSuccessHook = void Function(String providerId);
-typedef ProxyRequestTimeoutHook = void Function(String providerId, int waitedMs);
+typedef ProxyRequestTimeoutHook =
+    void Function(String providerId, int waitedMs);
 
 void bindProxyRequestHooks({
   required LocalProxyService proxy,
@@ -110,6 +112,17 @@ class LocalProxyService {
   Map<String, ClaudeBridgeBinding> get claudeBindingsSnapshot =>
       Map.unmodifiable(_claudeBindings);
 
+  void replaceClaudeBindings(Map<String, ClaudeBridgeBinding> bindings) {
+    _claudeBindings
+      ..clear()
+      ..addAll(bindings);
+    AppLogService.instance.info(
+      'ClaudeBridge',
+      '已恢复绑定',
+      details: 'count=${bindings.length}',
+    );
+  }
+
   void setClaudeBinding({
     required String codexThreadId,
     required ClaudeBridgeBinding binding,
@@ -124,7 +137,8 @@ class LocalProxyService {
   }
 
   void clearClaudeBinding({required String codexThreadId}) {
-    final removed = _claudeBindings.remove(codexThreadId) ??
+    final removed =
+        _claudeBindings.remove(codexThreadId) ??
         _claudeBindings.remove(_legacyClaudeBindingKey);
     if (removed != null) {
       AppLogService.instance.info(
@@ -140,7 +154,8 @@ class LocalProxyService {
     if (invocation.memberName == #setClaudeBinding &&
         invocation.positionalArguments.length == 1 &&
         invocation.positionalArguments.first is ClaudeBridgeBinding) {
-      final binding = invocation.positionalArguments.first as ClaudeBridgeBinding;
+      final binding =
+          invocation.positionalArguments.first as ClaudeBridgeBinding;
       _claudeBindings[_legacyClaudeBindingKey] = binding;
       AppLogService.instance.warning(
         'ClaudeBridge',
@@ -181,7 +196,8 @@ class LocalProxyService {
   void setTarget(ProxyTarget target) {
     final prev = _target;
     _target = target;
-    final unchanged = prev != null &&
+    final unchanged =
+        prev != null &&
         prev.baseUrl == target.baseUrl &&
         prev.model == target.model &&
         prev.upstreamProtocol == target.upstreamProtocol &&
@@ -228,10 +244,7 @@ class LocalProxyService {
       return;
     }
     if (onRequestSuccess == null) {
-      AppLogService.instance.warning(
-        'Proxy',
-        '上报成功被跳过:onRequestSuccess 回调未绑定',
-      );
+      AppLogService.instance.warning('Proxy', '上报成功被跳过:onRequestSuccess 回调未绑定');
       return;
     }
     onRequestSuccess!.call(id);
@@ -261,17 +274,11 @@ class LocalProxyService {
   void _reportTimeout(ProxyTarget target, int waitedMs) {
     final id = target.providerId;
     if (id == null || id.isEmpty) {
-      AppLogService.instance.warning(
-        'Proxy',
-        '上报超时被跳过:target.providerId 为空',
-      );
+      AppLogService.instance.warning('Proxy', '上报超时被跳过:target.providerId 为空');
       return;
     }
     if (onRequestTimeout == null) {
-      AppLogService.instance.warning(
-        'Proxy',
-        '上报超时被跳过:onRequestTimeout 回调未绑定',
-      );
+      AppLogService.instance.warning('Proxy', '上报超时被跳过:onRequestTimeout 回调未绑定');
       return;
     }
     onRequestTimeout!.call(id, waitedMs);
@@ -347,7 +354,8 @@ class LocalProxyService {
     AppLogService.instance.info(
       'Proxy',
       '转发到 ${spec.uri}',
-      details: 'model=${target.model ?? "(passthrough)"} protocol=${target.upstreamProtocol}',
+      details:
+          'model=${target.model ?? "(passthrough)"} protocol=${target.upstreamProtocol}',
     );
 
     final client = HttpClient();
@@ -410,13 +418,16 @@ class LocalProxyService {
       final HttpClientResponse upstreamResponse;
       if (_slowTimeout > Duration.zero) {
         try {
-          upstreamResponse = await upstreamRequest.close().timeout(_slowTimeout);
+          upstreamResponse = await upstreamRequest.close().timeout(
+            _slowTimeout,
+          );
         } on TimeoutException {
           stopwatch.stop();
           AppLogService.instance.warning(
             'Proxy',
             '上游慢响应超时',
-            details: 'waited=${stopwatch.elapsedMilliseconds}ms threshold=${_slowTimeout.inSeconds}s',
+            details:
+                'waited=${stopwatch.elapsedMilliseconds}ms threshold=${_slowTimeout.inSeconds}s',
           );
           _reportTimeout(target, stopwatch.elapsedMilliseconds);
           if (!responseStarted) {
@@ -431,7 +442,8 @@ class LocalProxyService {
       AppLogService.instance.info(
         'Proxy',
         '上游响应 ${upstreamResponse.statusCode}',
-        details: '${upstreamResponse.headers.contentType} elapsed=${stopwatch.elapsedMilliseconds}ms',
+        details:
+            '${upstreamResponse.headers.contentType} elapsed=${stopwatch.elapsedMilliseconds}ms',
       );
 
       // 上报给 health/auto-switch
@@ -480,12 +492,17 @@ class LocalProxyService {
         return false;
       case LlmResponseStreamKind.chatToResponses:
         downstream.statusCode = HttpStatus.ok;
-        await ChatStreamToResponsesTransformer().transform(upstream, downstream);
+        await ChatStreamToResponsesTransformer().transform(
+          upstream,
+          downstream,
+        );
         return true;
       case LlmResponseStreamKind.messagesToResponses:
         downstream.statusCode = HttpStatus.ok;
-        await AnthropicMessagesStreamToResponsesTransformer()
-            .transform(upstream, downstream);
+        await AnthropicMessagesStreamToResponsesTransformer().transform(
+          upstream,
+          downstream,
+        );
         return true;
     }
   }
@@ -615,11 +632,7 @@ class LocalProxyService {
             'codex_input[0]=$firstSummary\n  my_inject=${_shortenJsonValues(myInjection)}',
       );
     } catch (e) {
-      AppLogService.instance.warning(
-        'ClaudeBridge',
-        '对比失败',
-        details: '$e',
-      );
+      AppLogService.instance.warning('ClaudeBridge', '对比失败', details: '$e');
     }
   }
 
@@ -643,7 +656,9 @@ class LocalProxyService {
       if (messages is List) {
         final sys = decoded['system'];
         if (sys != null) {
-          buf.write('system=${_clip(sys.toString().replaceAll('\n', '\\n'), 400)}');
+          buf.write(
+            'system=${_clip(sys.toString().replaceAll('\n', '\\n'), 400)}',
+          );
         }
         buf.write('\n  messages.count=${messages.length}');
         for (var i = 0; i < messages.length; i++) {
@@ -656,11 +671,7 @@ class LocalProxyService {
         details: buf.toString(),
       );
     } catch (e) {
-      AppLogService.instance.warning(
-        'ClaudeBridge',
-        'dump 失败',
-        details: '$e',
-      );
+      AppLogService.instance.warning('ClaudeBridge', 'dump 失败', details: '$e');
     }
   }
 
@@ -687,8 +698,9 @@ class LocalProxyService {
   /// 把当前的 Claude 桥绑定渲染成一条 system message 内容。
   /// 让上游 LLM 知道这次对话需要先调 MCP 工具读取这条 Claude 会话作为接续上下文。
   String _buildClaudeBridgeSystemMessage(ClaudeBridgeBinding binding) {
-    final titlePart =
-        (binding.title != null && binding.title!.isNotEmpty) ? '\n- 标题: ${binding.title}' : '';
+    final titlePart = (binding.title != null && binding.title!.isNotEmpty)
+        ? '\n- 标题: ${binding.title}'
+        : '';
     return '本次对话需要接续一条已存在的 Claude Code 会话作为上下文。\n'
         '请在响应用户之前,通过 MCP 工具 `read_claude_session` 读取下列会话的消息流,\n'
         '理解其历史后再回答用户的新请求。可分页读取(每次 limit≤200),必要时多次调用直到 hasMore=false。\n\n'
@@ -728,7 +740,9 @@ class LocalProxyService {
       final names = <String>[];
       for (final t in tools) {
         if (t is Map) {
-          final n = t['name'] ?? (t['function'] is Map ? (t['function'] as Map)['name'] : null);
+          final n =
+              t['name'] ??
+              (t['function'] is Map ? (t['function'] as Map)['name'] : null);
           if (n is String) names.add(n);
         }
       }
@@ -810,7 +824,9 @@ class LocalProxyService {
         }
       }
       if (texts.isNotEmpty) {
-        parts.add('content=${_clip(texts.join(" | ").replaceAll('\n', '\\n'), 200)}');
+        parts.add(
+          'content=${_clip(texts.join(" | ").replaceAll('\n', '\\n'), 200)}',
+        );
       }
     }
 

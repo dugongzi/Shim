@@ -305,4 +305,4 @@ final class ProviderRouteRegistrationProvider
 }
 
 String _$providerRouteRegistrationHash() =>
-    r'd292a2cf2c63a9113371b04c52d91d0c0ac39603';
+    r'6ee9680817c5f5b740d3e2b25aa62d26ba4a4acf';

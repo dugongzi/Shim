@@ -61,7 +61,7 @@ bool providerRouteRegistration(Ref ref) {
   bridge.register('/provider/current', (payload) async {
     final current = await _currentProvider(repo);
     if (current == null) {
-      return {'name': null, 'label': null, 'model': null};
+      return {'id': null, 'name': null, 'label': null, 'model': null};
     }
     final isZh = ref.read(localeProvider).languageCode == 'zh';
     final prefix = isZh ? '供应商：' : 'Provider: ';
@@ -69,7 +69,15 @@ bool providerRouteRegistration(Ref ref) {
     final label = (model == null || model.isEmpty)
         ? '$prefix${current.name}'
         : '$prefix${current.name} · $model';
-    return {'name': current.name, 'label': label, 'model': model};
+    return {
+      'id': current.id,
+      'name': current.name,
+      'label': label,
+      'model': model,
+      'protocol': current.upstreamProtocol,
+      'providerWeight': current.providerWeight,
+      'modelWeight': current.modelWeight,
+    };
   });
 
   return true;

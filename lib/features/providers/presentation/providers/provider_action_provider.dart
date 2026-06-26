@@ -37,13 +37,12 @@ Future<void> _syncRunningProxyTarget(Ref ref) async {
       break;
     }
   }
-  if (selected == null ||
-      selected.baseUrl.isEmpty ||
-      selected.apiKey.isEmpty) {
+  if (selected == null || selected.baseUrl.isEmpty || selected.apiKey.isEmpty) {
     return;
   }
-  final reasoningEffort =
-      await ref.read(appStorageProvider).getString(_reasoningEffortKey);
+  final reasoningEffort = await ref
+      .read(appStorageProvider)
+      .getString(_reasoningEffortKey);
   proxy.setTarget(
     ProxyTarget(
       baseUrl: selected.baseUrl,
@@ -56,11 +55,13 @@ Future<void> _syncRunningProxyTarget(Ref ref) async {
   );
   // 切换供应商时,周期 scope 也要带新的候选(top2 同 scope)
   final autoSettings = await ref.read(autoSwitchRepositoryProvider).read();
-  ref.read(providerHealthProbeServiceProvider).refreshPeriodicScopeFor(
-    currentProviderId: selected.id,
-    providers: providers,
-    scope: autoSettings.scope,
-  );
+  ref
+      .read(providerHealthProbeServiceProvider)
+      .refreshPeriodicScopeFor(
+        currentProviderId: selected.id,
+        providers: providers,
+        scope: autoSettings.scope,
+      );
 }
 
 @riverpod
@@ -96,7 +97,13 @@ void registerProviderActionBridgeRoutes(Ref ref) {
     final providers = await queryRepo.listProviders();
     final selectedId = await queryRepo.selectedId();
     final reasoningEffort = await appStorage.getString(_reasoningEffortKey);
-    return _providerListPayload(providers, selectedId, reasoningEffort, healthRepo, isZh());
+    return _providerListPayload(
+      providers,
+      selectedId,
+      reasoningEffort,
+      healthRepo,
+      isZh(),
+    );
   });
 
   bridge.register('/provider/select', (payload) async {
@@ -116,7 +123,8 @@ void registerProviderActionBridgeRoutes(Ref ref) {
       AppLogService.instance.info(
         'Provider',
         '选中供应商',
-        details: 'id=$id prev=$prevSelected 调用方=${payload['__caller'] ?? '(unknown)'}',
+        details:
+            'id=$id prev=$prevSelected 调用方=${payload['__caller'] ?? '(unknown)'}',
       );
     }
     ref.invalidate(providerListProvider);
@@ -125,7 +133,13 @@ void registerProviderActionBridgeRoutes(Ref ref) {
     final providers = await queryRepo.listProviders();
     final selectedId = await queryRepo.selectedId();
     final reasoningEffort = await appStorage.getString(_reasoningEffortKey);
-    return _providerListPayload(providers, selectedId, reasoningEffort, healthRepo, isZh());
+    return _providerListPayload(
+      providers,
+      selectedId,
+      reasoningEffort,
+      healthRepo,
+      isZh(),
+    );
   });
 
   bridge.register('/provider/select-model', (payload) async {
@@ -152,13 +166,15 @@ void registerProviderActionBridgeRoutes(Ref ref) {
       AppLogService.instance.debug(
         'Provider',
         '切换模型(无变化)',
-        details: 'id=$id model=${model ?? "(null)"} 调用方=${payload['__caller'] ?? '(unknown)'}',
+        details:
+            'id=$id model=${model ?? "(null)"} 调用方=${payload['__caller'] ?? '(unknown)'}',
       );
     } else {
       AppLogService.instance.info(
         'Provider',
         '切换模型',
-        details: 'id=$id ${prevModel ?? "(null)"} -> ${model ?? "(null)"} 调用方=${payload['__caller'] ?? '(unknown)'}',
+        details:
+            'id=$id ${prevModel ?? "(null)"} -> ${model ?? "(null)"} 调用方=${payload['__caller'] ?? '(unknown)'}',
       );
     }
     await actionRepo.saveSelectedId(id);
@@ -174,7 +190,13 @@ void registerProviderActionBridgeRoutes(Ref ref) {
 
     final selectedId = await queryRepo.selectedId();
     final reasoningEffort = await appStorage.getString(_reasoningEffortKey);
-    return _providerListPayload(next, selectedId, reasoningEffort, healthRepo, isZh());
+    return _providerListPayload(
+      next,
+      selectedId,
+      reasoningEffort,
+      healthRepo,
+      isZh(),
+    );
   });
 
   bridge.register('/provider/set-reasoning-effort', (payload) async {
@@ -189,7 +211,13 @@ void registerProviderActionBridgeRoutes(Ref ref) {
 
     final providers = await queryRepo.listProviders();
     final selectedId = await queryRepo.selectedId();
-    return _providerListPayload(providers, selectedId, effort, healthRepo, isZh());
+    return _providerListPayload(
+      providers,
+      selectedId,
+      effort,
+      healthRepo,
+      isZh(),
+    );
   });
 }
 
@@ -275,6 +303,74 @@ Map<String, String> _shimLabels(bool isZh) {
       'claudeBridgeChipPrefix': 'Claude:',
       'claudeBridgeChipUnbindAria': '解除绑定',
       'claudeBridgeSessionsCount': '个会话',
+      'shimControlTitle': 'Shim 控制',
+      'shimControlSubtitle': 'Codex 运行面板',
+      'shimControlClose': '关闭',
+      'shimControlRefresh': '刷新',
+      'shimControlRefreshAria': '刷新状态',
+      'shimControlCopy': '复制',
+      'shimControlCopyAria': '复制状态摘要',
+      'shimControlCopied': '状态已复制',
+      'shimControlCopyEmpty': '暂无可复制的状态',
+      'shimControlCopyFailed': '复制失败',
+      'shimControlLoading': '状态',
+      'shimControlChecking': '检测中…',
+      'shimControlCheckingDescription': '正在收集 Bridge、供应商、故障转移和上下文映射状态。',
+      'shimControlNoCodexThread': '未选中 Codex 对话',
+      'shimControlCurrentThread': '当前对话',
+      'shimControlThreadId': 'Thread ID',
+      'shimControlThreadWaiting': '打开已保存的 Codex 对话后，可在这里查看上下文映射。',
+      'shimControlBoundTo': '映射到',
+      'shimControlReadyToBind': '未映射',
+      'shimControlNoThreadState': '无对话',
+      'shimControlClaudeSession': 'Claude 会话',
+      'shimControlBoundVerb': '绑定',
+      'shimControlSessionSuffix': '会话',
+      'shimControlUnboundClaude': '未绑定 Claude 会话',
+      'shimControlClaudeBindingFailed': '绑定状态读取失败',
+      'shimControlClaudeBindingEmpty': '暂无 Codex 对话映射 Claude 会话',
+      'shimControlClaudeBindingCount': '个对话映射',
+      'shimControlLegacyBinding': '旧版全局绑定',
+      'shimControlBridge': 'Bridge',
+      'shimControlBridgeReady': '已连接',
+      'shimControlBridgeFailed': '不可用',
+      'shimControlBridgeDescription': '本地 RPC 通道可用，页面可以正常调用 Shim。',
+      'shimControlBridgeErrorDescription': '注入页面暂时无法访问本地 Bridge。',
+      'shimControlProvider': '供应商',
+      'shimControlProviderEmpty': '未接管供应商',
+      'shimControlProviderFailed': '供应商不可用',
+      'shimControlProviderDescription': 'Codex 请求会通过当前供应商转发。',
+      'shimControlProviderEmptyDescription': '未覆盖供应商，Codex 使用当前默认配置。',
+      'shimControlAutoSwitch': '自动切换',
+      'shimControlAutoSwitchFailed': '自动切换不可用',
+      'shimControlAutoSwitchDescription': '供应商健康状态异常时可触发故障转移。',
+      'shimControlAutoSwitchManualDescription': '自动故障转移待命，需要时可手动切换。',
+      'shimControlClaudeBinding': '上下文映射',
+      'shimControlClaudeBindingDescription': '已映射的对话会把 Claude 上下文带入 Codex。',
+      'shimControlClaudeBindingEmptyDescription': '从侧栏选择 Claude 会话后，可在这里查看上下文映射。',
+      'shimControlBoundMetricSuffix': '条映射',
+      'shimControlCopyThreadId': '复制 ID',
+      'shimControlThreadIdCopied': 'Thread ID 已复制',
+      'shimControlStatusOk': '正常',
+      'shimControlStatusWarn': '注意',
+      'shimControlStatusError': '异常',
+      'shimControlStatusInfo': '信息',
+      'shimControlStatusIdle': '待命',
+      'shimControlStatus': '状态',
+      'shimControlStatusPreviewTab': '状态预览',
+      'shimControlRuntimeSection': '运行状态',
+      'shimControlCurrentMode': '当前模式',
+      'shimControlProviderName': '供应商名称',
+      'shimControlProviderModel': '模型',
+      'shimControlProviderModelEmpty': '透传',
+      'shimControlProviderProtocol': '协议',
+      'shimControlProviderWeights': '权重',
+      'shimControlBindingsSection': '对话映射',
+      'shimControlCodexColumn': 'Codex 对话',
+      'shimControlClaudeColumn': 'Claude 会话',
+      'shimControlOverviewTab': '数据概览',
+      'shimControlNavTitle': '面板',
+      'shimControlProviderSection': '供应商详情',
     };
   }
   return {
@@ -306,7 +402,8 @@ Map<String, String> _shimLabels(bool isZh) {
     'switchEffortFailed': 'Switch reasoning failed',
     'autoSwitchedToast': 'Provider auto-switched',
     'autoSwitchMaintenanceToast': 'Auto-switch paused',
-    'autoSwitchNoEligibleToast': 'Current provider unhealthy, but no eligible candidate to switch — please check manually',
+    'autoSwitchNoEligibleToast':
+        'Current provider unhealthy, but no eligible candidate to switch — please check manually',
     'probeNow': 'Measure latency',
     'threadMenu': 'More',
     'threadExport': 'Export',
@@ -325,6 +422,83 @@ Map<String, String> _shimLabels(bool isZh) {
     'claudeBridgeChipPrefix': 'Claude:',
     'claudeBridgeChipUnbindAria': 'Unbind',
     'claudeBridgeSessionsCount': 'sessions',
+    'shimControlTitle': 'Shim control',
+    'shimControlSubtitle': 'Codex runtime panel',
+    'shimControlClose': 'Close',
+    'shimControlRefresh': 'Refresh',
+    'shimControlRefreshAria': 'Refresh status',
+    'shimControlCopy': 'Copy',
+    'shimControlCopyAria': 'Copy status summary',
+    'shimControlCopied': 'Status copied',
+    'shimControlCopyEmpty': 'No status to copy yet',
+    'shimControlCopyFailed': 'Copy failed',
+    'shimControlLoading': 'Status',
+    'shimControlChecking': 'Checking…',
+    'shimControlCheckingDescription':
+        'Collecting bridge, provider, failover, and context mapping status.',
+    'shimControlNoCodexThread': 'No active Codex conversation',
+    'shimControlCurrentThread': 'Current thread',
+    'shimControlThreadId': 'Thread ID',
+    'shimControlThreadWaiting':
+        'Open a saved Codex conversation to inspect context mappings.',
+    'shimControlBoundTo': 'Mapped to',
+    'shimControlReadyToBind': 'Not mapped',
+    'shimControlNoThreadState': 'No thread',
+    'shimControlClaudeSession': 'Claude session',
+    'shimControlBoundVerb': 'bound to',
+    'shimControlSessionSuffix': 'session',
+    'shimControlUnboundClaude': 'has no Claude session bound',
+    'shimControlClaudeBindingFailed': 'Binding status unavailable',
+    'shimControlClaudeBindingEmpty': 'No Codex conversations are mapped',
+    'shimControlClaudeBindingCount': 'conversation mappings',
+    'shimControlLegacyBinding': 'Legacy global binding',
+    'shimControlBridge': 'Bridge',
+    'shimControlBridgeReady': 'Connected',
+    'shimControlBridgeFailed': 'Unavailable',
+    'shimControlBridgeDescription': 'Local RPC channel is reachable.',
+    'shimControlBridgeErrorDescription':
+        'The injected page cannot reach the local bridge.',
+    'shimControlProvider': 'Provider',
+    'shimControlProviderEmpty': 'No active provider',
+    'shimControlProviderFailed': 'Provider unavailable',
+    'shimControlProviderDescription':
+        'Requests are routed through this provider.',
+    'shimControlProviderEmptyDescription':
+        'Codex is using its current default provider.',
+    'shimControlAutoSwitch': 'Auto switch',
+    'shimControlAutoSwitchFailed': 'Auto switch unavailable',
+    'shimControlAutoSwitchDescription':
+        'Provider health can trigger failover.',
+    'shimControlAutoSwitchManualDescription':
+        'Automatic failover is standing by.',
+    'shimControlClaudeBinding': 'Context mapping',
+    'shimControlClaudeBindingDescription':
+        'Mapped conversations carry Claude context into Codex.',
+    'shimControlClaudeBindingEmptyDescription':
+        'Select a Claude session from the sidebar to inspect context mappings here.',
+    'shimControlBoundMetricSuffix': 'mappings',
+    'shimControlCopyThreadId': 'Copy ID',
+    'shimControlThreadIdCopied': 'Thread ID copied',
+    'shimControlStatusOk': 'OK',
+    'shimControlStatusWarn': 'Warn',
+    'shimControlStatusError': 'Error',
+    'shimControlStatusInfo': 'Info',
+    'shimControlStatusIdle': 'Idle',
+    'shimControlStatus': 'Status',
+    'shimControlStatusPreviewTab': 'Status preview',
+    'shimControlRuntimeSection': 'Runtime',
+    'shimControlCurrentMode': 'Mode',
+    'shimControlProviderName': 'Provider name',
+    'shimControlProviderModel': 'Model',
+    'shimControlProviderModelEmpty': 'Passthrough',
+    'shimControlProviderProtocol': 'Protocol',
+    'shimControlProviderWeights': 'Weights',
+    'shimControlBindingsSection': 'Conversation mappings',
+    'shimControlCodexColumn': 'Codex conversation',
+    'shimControlClaudeColumn': 'Claude session',
+    'shimControlOverviewTab': 'Data overview',
+    'shimControlNavTitle': 'Sections',
+    'shimControlProviderSection': 'Provider details',
   };
 }
 
@@ -389,8 +563,9 @@ class ProviderActions extends _$ProviderActions {
     final repo = ref.read(providerActionRepositoryProvider);
     final query = ref.read(providerQueryRepositoryProvider);
     final current = await query.listProviders();
-    final next =
-        current.map((p) => p.id == provider.id ? provider : p).toList();
+    final next = current
+        .map((p) => p.id == provider.id ? provider : p)
+        .toList();
     await repo.saveProviders(next);
     ref.invalidate(providerListProvider);
     // 改的若是当前选中项,热更新运行中的代理目标(链接/key 改了立刻生效)
@@ -463,9 +638,7 @@ Future<void> startTakeover(Ref ref, {bool? enabledOverride}) async {
       break;
     }
   }
-  if (selected == null ||
-      selected.baseUrl.isEmpty ||
-      selected.apiKey.isEmpty) {
+  if (selected == null || selected.baseUrl.isEmpty || selected.apiKey.isEmpty) {
     return;
   }
 
@@ -517,7 +690,9 @@ Future<void> startTakeover(Ref ref, {bool? enabledOverride}) async {
     },
   );
   // 把慢响应阈值推给 proxy(0 表示不启用)
-  proxy.setSlowTimeout(Duration(seconds: autoSettings.slowRequestTimeoutSeconds));
+  proxy.setSlowTimeout(
+    Duration(seconds: autoSettings.slowRequestTimeoutSeconds),
+  );
 
   if (autoSettings.strategy != 'manual') {
     probe.refreshPeriodicScopeFor(
@@ -550,4 +725,3 @@ Future<void> stopTakeover(Ref ref) async {
 Future<void> proxyAutoStart(Ref ref) async {
   await startTakeover(ref);
 }
-

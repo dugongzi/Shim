@@ -2,7 +2,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shim/core/services/bridge_service.dart';
 import 'package:shim/core/services/cdp_service.dart';
 import 'package:shim/core/services/codex_launcher_service.dart';
-import 'package:shim/core/services/local_proxy_service.dart';
 import 'package:shim/features/claude_session/presentation/providers/claude_session_query_provider.dart';
 import 'package:shim/features/codex_session/presentation/providers/codex_session_action_provider.dart';
 import 'package:shim/features/codex_session/presentation/providers/codex_session_export_provider.dart';
@@ -73,10 +72,8 @@ Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
   ref.read(providerHealthRouteRegistrationProvider);
   ref.read(autoSwitchRouteRegistrationProvider);
   ref.read(providerActionRouteRegistrationProvider);
-  registerClaudeBridgeRoutes(
-    bridge: bridge,
-    proxy: ref.read(localProxyServiceProvider),
-  );
+  final claudeBridge = ref.read(claudeBridgeRouteControllerProvider);
+  await claudeBridge.ensureHydrated();
   final script = await repo.loadInjectScript();
   await cdp.connect(debugPort);
   await bridge.install(documentScripts: [script]);
@@ -102,10 +99,9 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
   ref.read(providerHealthRouteRegistrationProvider);
   ref.read(autoSwitchRouteRegistrationProvider);
   ref.read(providerActionRouteRegistrationProvider);
-  registerClaudeBridgeRoutes(
-    bridge: bridge,
-    proxy: ref.read(localProxyServiceProvider),
-  );
+  final claudeBridge = ref.read(claudeBridgeRouteControllerProvider);
+  await claudeBridge.ensureHydrated();
+  if (!ref.mounted) return;
 
   // 接管开关开着 → 完整接管（起代理 + 改 config）；否则释放。
   await startTakeover(ref);

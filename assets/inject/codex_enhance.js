@@ -151,7 +151,6 @@
   const THREAD_PREVIEW_LENS_ID = '__shim_thread_preview_lens__';
 
   const BADGE_ANCHOR_SVG_D_PREFIX = 'M16.835 8.66301C16.835 7.71885';
-  const SETTINGS_ANCHOR_SVG_D_PREFIX = 'M9.99944 7.24939';
   const SEND_BUTTON_SVG_D_PREFIX = 'M9.33467 16.6663V4.93978';
   const CODEX_MODEL_SELECTOR_FLAG = 'data-shim-hidden-codex-model-selector';
 
@@ -196,8 +195,8 @@
       width: '8px',
       height: '8px',
       borderRadius: '50%',
-      background: '#22c55e',
-      boxShadow: '0 0 6px rgba(34, 197, 94, 0.8)',
+      background: '#60a5fa',
+      boxShadow: '0 0 6px rgba(96, 165, 250, 0.62)',
     });
 
     const text = document.createElement('span');
@@ -236,35 +235,27 @@
     (document.body || document.documentElement).appendChild(buildBadge(false));
   }
 
-  // ========== Shim 菜单项（插入到 Codex 设置菜单顶部） ==========
+  function removeInjectedBadge() {
+    document.getElementById(BADGE_ID)?.remove();
+  }
 
-  function findSettingsMenuList() {
-    const paths = document.querySelectorAll('svg path');
-    for (const path of paths) {
-      const d = path.getAttribute('d');
-      if (!d || !d.startsWith(SETTINGS_ANCHOR_SVG_D_PREFIX)) continue;
-      const menuItem = path.closest('[role="menuitem"]');
-      if (!menuItem) continue;
-      const list = menuItem.parentElement;
-      if (!list) continue;
-      const menu = list.closest('[role="menu"]');
-      if (!menu) continue;
-      return list;
-    }
-    return null;
+  // ========== Shim 控制入口（侧栏 Claude bridge 下方） ==========
+
+  function findShimMenuInsertAnchor() {
+    const panel = document.getElementById(NAV_PANEL_ID);
+    if (panel) return panel;
+    return document.getElementById(NAV_BTN_ID);
   }
 
   function buildShimMenuItem() {
-    const item = document.createElement('div');
+    const item = document.createElement('button');
     item.id = MENU_ITEM_ID;
-    item.setAttribute('role', 'menuitem');
-    item.setAttribute('tabindex', '-1');
-    item.setAttribute('data-orientation', 'vertical');
+    item.type = 'button';
     item.className =
-      'no-drag text-token-foreground outline-hidden rounded-lg px-[var(--padding-row-x)] py-[var(--padding-row-y)] text-sm group hover:bg-token-list-hover-background focus:bg-token-list-hover-background cursor-interaction flex flex-col';
+      'focus-visible:outline-token-border relative h-token-nav-row px-row-x py-row-y cursor-interaction shrink-0 items-center overflow-hidden rounded-lg text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 gap-2 flex w-full hover:bg-token-list-hover-background';
 
     const row = document.createElement('div');
-    row.className = 'flex w-full items-center gap-1.5';
+    row.className = 'flex min-w-0 items-center text-base gap-2 flex-1 text-token-foreground';
 
     const iconWrap = document.createElement('span');
     iconWrap.style.display = 'inline-flex';
@@ -275,8 +266,20 @@
     label.className = 'flex-1 min-w-0 truncate';
     label.textContent = 'Shim';
 
+    const statusDot = document.createElement('span');
+    statusDot.setAttribute('aria-hidden', 'true');
+    Object.assign(statusDot.style, {
+      width: '8px',
+      height: '8px',
+      borderRadius: '999px',
+      background: '#60a5fa',
+      boxShadow: '0 0 8px rgba(96, 165, 250, 0.48)',
+      flex: '0 0 auto',
+    });
+
     row.appendChild(iconWrap);
     row.appendChild(label);
+    row.appendChild(statusDot);
     item.appendChild(row);
 
     item.addEventListener('click', (event) => {
@@ -295,84 +298,1242 @@
   }
 
   function ensureShimMenuItem() {
-    const list = findSettingsMenuList();
-    if (!list) return;
-    if (document.getElementById(MENU_ITEM_ID)?.parentElement === list) return;
-    if (typeof __t === 'function') __t('ensureShimMenuItem: INSERT into settings menu');
-    document.getElementById(MENU_ITEM_ID)?.remove();
+    const navList = findCodexNavList();
+    if (!navList) return;
+    const anchor = findShimMenuInsertAnchor();
+    if (!anchor || anchor.parentElement !== navList) return;
+
+    const existing = document.getElementById(MENU_ITEM_ID);
+    if (existing && existing.parentElement === navList && existing.previousElementSibling === anchor) {
+      return;
+    }
+    if (typeof __t === 'function') __t('ensureShimMenuItem: INSERT into nav');
+    existing?.remove();
     const item = buildShimMenuItem();
-    list.insertBefore(item, list.firstChild);
+    anchor.insertAdjacentElement('afterend', item);
   }
 
-  // ========== 浮层 ==========
+  // ========== Shim 控制面板 ==========
+
+  let shimControlPanelSnapshot = null;
 
   function buildPopover() {
-    const popover = document.createElement('div');
-    popover.id = POPOVER_ID;
-    Object.assign(popover.style, {
+    const panel = document.createElement('div');
+    panel.id = POPOVER_ID;
+    panel.className =
+      'bg-token-dropdown-background/95 text-token-foreground ring-token-border shadow-xl-spread backdrop-blur-sm';
+    Object.assign(panel.style, {
       position: 'fixed',
       zIndex: '2147483647',
-      padding: '14px 16px',
-      minWidth: '180px',
-      background: 'rgba(20, 20, 20, 0.92)',
-      color: '#fff',
-      borderRadius: '12px',
-      boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
-      backdropFilter: 'blur(8px)',
+      width: 'min(880px, calc(100vw - 96px))',
+      maxWidth: 'calc(100vw - 32px)',
+      height: 'min(620px, calc(100vh - 96px))',
+      maxHeight: 'calc(100vh - 48px)',
+      minHeight: '0',
+      padding: '0',
+      borderRadius: '14px',
+      border: '1px solid var(--token-border, rgba(255,255,255,0.08))',
+      background: 'var(--token-main-surface-primary, var(--token-sidebar-surface-primary, rgba(20,20,22,0.985)))',
+      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.44)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '13px',
       lineHeight: '1.5',
       userSelect: 'none',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
     });
 
-    const titleRow = document.createElement('div');
-    Object.assign(titleRow.style, {
+    panel.appendChild(buildControlPanelHeader());
+
+    const narrow = window.innerWidth < 760;
+    const shell = document.createElement('div');
+    Object.assign(shell.style, {
+      display: 'grid',
+      gridTemplateColumns: narrow ? '160px minmax(0, 1fr)' : '200px minmax(0, 1fr)',
+      flex: '1 1 auto',
+      minHeight: '0',
+      overflow: 'hidden',
+    });
+    shell.appendChild(buildControlPanelSidebar());
+
+    const content = document.createElement('div');
+    content.setAttribute('data-shim-control-body', '1');
+    Object.assign(content.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      minHeight: '0',
+    });
+    shell.appendChild(content);
+    panel.appendChild(shell);
+
+    renderControlPanelLoading(content);
+    refreshControlPanel(panel);
+    return panel;
+  }
+
+  function buildControlPanelSidebar() {
+    const sidebar = document.createElement('aside');
+    Object.assign(sidebar.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '20px 12px',
+      gap: '2px',
+      borderRight: '1px solid var(--token-border, rgba(255,255,255,0.06))',
+      background: 'rgba(255,255,255,0.018)',
+      overflowY: 'auto',
+    });
+
+    const navLabel = document.createElement('div');
+    navLabel.textContent = S('shimControlNavTitle', 'Sections');
+    Object.assign(navLabel.style, {
+      padding: '4px 10px 10px',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.42))',
+      fontSize: '10px',
+      fontWeight: '600',
+      letterSpacing: '0.8px',
+      textTransform: 'uppercase',
+    });
+    sidebar.appendChild(navLabel);
+
+    const ICON_OVERVIEW = '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>';
+    sidebar.appendChild(buildSidebarNavItem(ICON_OVERVIEW, S('shimControlOverviewTab', 'Data overview'), true));
+
+    return sidebar;
+  }
+
+  function buildSidebarNavItem(iconHtml, label, active) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    Object.assign(item.style, {
       display: 'flex',
       alignItems: 'center',
-      gap: '8px',
-      fontWeight: '700',
+      gap: '10px',
+      width: '100%',
+      padding: '8px 10px',
+      border: '0',
+      borderRadius: '8px',
+      background: active ? 'rgba(96,165,250,0.10)' : 'transparent',
+      color: active
+        ? 'var(--token-text-primary, currentColor)'
+        : 'var(--token-text-secondary, rgba(255,255,255,0.62))',
+      cursor: active ? 'default' : 'pointer',
+      fontSize: '13px',
+      fontWeight: active ? '600' : '500',
+      textAlign: 'left',
+      transition: 'background 140ms ease, color 140ms ease',
+    });
+    const icon = document.createElement('span');
+    icon.innerHTML = iconHtml;
+    Object.assign(icon.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '16px',
+      height: '16px',
+      flex: '0 0 auto',
+      color: active ? '#93c5fd' : 'currentColor',
+    });
+    const text = document.createElement('span');
+    text.textContent = label;
+    Object.assign(text.style, {
+      flex: '1 1 auto',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    item.appendChild(icon);
+    item.appendChild(text);
+    if (!active) {
+      item.addEventListener('mouseenter', () => {
+        item.style.background = 'rgba(255,255,255,0.045)';
+        item.style.color = 'var(--token-text-primary, #f8fafc)';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.background = 'transparent';
+        item.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.62))';
+      });
+    }
+    return item;
+  }
+
+  function buildControlPanelHeader() {
+    const header = document.createElement('div');
+    Object.assign(header.style, {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+      padding: '14px 20px',
+      borderBottom: '1px solid var(--token-border, rgba(255,255,255,0.06))',
+    });
+
+    const titleWrap = document.createElement('div');
+    Object.assign(titleWrap.style, {
+      minWidth: '0',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+    });
+
+    const dot = document.createElement('span');
+    dot.innerHTML = SHIM_ICON_SVG;
+    Object.assign(dot.style, {
+      width: '22px',
+      height: '22px',
+      color: '#93c5fd',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: '0 0 auto',
+      opacity: '0.9',
+    });
+
+    const titleText = document.createElement('span');
+    titleText.textContent = S('shimControlTitle', 'Shim control');
+    Object.assign(titleText.style, {
       fontSize: '14px',
-      marginBottom: '6px',
+      fontWeight: '600',
+      letterSpacing: '0.2px',
+      color: 'var(--token-text-primary, currentColor)',
+    });
+
+    titleWrap.appendChild(dot);
+    titleWrap.appendChild(titleText);
+
+    const actions = document.createElement('div');
+    Object.assign(actions.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px',
+      flex: '0 0 auto',
+    });
+
+    const ICON_REFRESH = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M13.5 2.5v3h-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_COPY = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="8" height="9" rx="1.4" stroke="currentColor" stroke-width="1.3"/><path d="M11 5V3.4a1.4 1.4 0 0 0-1.4-1.4H4.4A1.4 1.4 0 0 0 3 3.4v6.2A1.4 1.4 0 0 0 4.4 11H5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+    const ICON_CLOSE = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+
+    actions.appendChild(buildControlIconButton(
+      ICON_REFRESH,
+      S('shimControlRefreshAria', 'Refresh status'),
+      () => refreshOpenControlPanel(),
+    ));
+    actions.appendChild(buildControlIconButton(
+      ICON_COPY,
+      S('shimControlCopyAria', 'Copy status summary'),
+      () => copyControlPanelSnapshot(),
+    ));
+    actions.appendChild(buildControlIconButton(
+      ICON_CLOSE,
+      S('shimControlClose', 'Close'),
+      () => dismissPopover(),
+    ));
+
+    header.appendChild(titleWrap);
+    header.appendChild(actions);
+    return header;
+  }
+
+  function buildControlIconButton(svgHtml, ariaLabel, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.innerHTML = svgHtml;
+    button.setAttribute('aria-label', ariaLabel);
+    button.setAttribute('title', ariaLabel);
+    Object.assign(button.style, {
+      width: '28px',
+      height: '28px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '0',
+      borderRadius: '6px',
+      background: 'transparent',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.62))',
+      cursor: 'pointer',
+      transition: 'background 140ms ease, color 140ms ease',
+    });
+    button.addEventListener('mouseenter', () => {
+      button.style.background = 'rgba(255,255,255,0.06)';
+      button.style.color = 'var(--token-text-primary, #f8fafc)';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.background = 'transparent';
+      button.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.62))';
+    });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onClick();
+    });
+    return button;
+  }
+
+  function refreshOpenControlPanel() {
+    const panel = document.getElementById(POPOVER_ID);
+    const body = panel?.querySelector?.('[data-shim-control-body]');
+    if (!panel || !body) return;
+    renderControlPanelLoading(body);
+    refreshControlPanel(panel);
+  }
+
+  async function copyControlPanelSnapshot() {
+    const snapshot = shimControlPanelSnapshot;
+    if (!snapshot) {
+      showToast(S('shimControlCopyEmpty', 'No status to copy yet'), 'warning');
+      return;
+    }
+    const text = controlPanelSnapshotText(snapshot);
+    await copyTextToClipboard(text, S('shimControlCopied', 'Status copied'));
+  }
+
+  async function copyTextToClipboard(text, successMessage) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(text);
+      showToast(successMessage, 'success');
+    } catch (_) {
+      showToast(S('shimControlCopyFailed', 'Copy failed'), 'error');
+    }
+  }
+
+  function controlPanelSnapshotText(snapshot) {
+    const providerLabel = snapshot.provider.ok
+      ? (snapshot.provider.data.label || S('shimControlProviderEmpty', 'No active provider'))
+      : `${S('shimControlProviderFailed', 'Provider unavailable')}: ${snapshot.provider.message || ''}`;
+    const autoData = snapshot.autoSwitch.data || {};
+    const labels = autoData.labels || {};
+    const strategy = autoData.strategy || 'manual';
+    const strategyLabel = labels[`strategy${strategy.charAt(0).toUpperCase()}${strategy.slice(1)}`] || strategy;
+    const bridgeLabel = snapshot.bridge.ok
+      ? S('shimControlBridgeReady', 'Connected')
+      : `${S('shimControlBridgeFailed', 'Unavailable')}: ${snapshot.bridge.message || ''}`;
+    const thread = snapshot.currentThread || {};
+    const lines = [
+      `${S('shimControlTitle', 'Shim control')}`,
+      `${S('shimControlCurrentThread', 'Current thread')}: ${thread.label || ''}`,
+      `${S('shimControlThreadId', 'Thread ID')}: ${thread.id || ''}`,
+      `${S('shimControlBridge', 'Bridge')}: ${bridgeLabel}`,
+      `${S('shimControlProvider', 'Provider')}: ${providerLabel}`,
+      `${S('shimControlAutoSwitch', 'Auto switch')}: ${strategyLabel}`,
+      `${S('shimControlClaudeBinding', 'Claude binding')}: ${snapshot.claude.value || ''}`,
+    ];
+    for (const item of snapshot.claude.details || []) {
+      if (item && typeof item === 'object') {
+        lines.push(`- ${item.source || ''} -> ${item.target || ''}`);
+      } else {
+        lines.push(`- ${item}`);
+      }
+    }
+    return lines.join('\n');
+  }
+
+  function renderControlPanelLoading(body) {
+    body.innerHTML = '';
+    body.appendChild(buildControlLoadingPanel());
+  }
+
+  function buildControlLoadingPanel() {
+    const loading = document.createElement('div');
+    Object.assign(loading.style, {
+      minHeight: '200px',
+      display: 'grid',
+      placeItems: 'center',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      textAlign: 'center',
+      padding: '24px',
+    });
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '8px',
+    });
+    const spinner = document.createElement('div');
+    Object.assign(spinner.style, {
+      width: '18px',
+      height: '18px',
+      borderRadius: '999px',
+      border: '2px solid rgba(255,255,255,0.10)',
+      borderTopColor: '#60a5fa',
+      animation: 'shimSpin 0.9s linear infinite',
+      marginBottom: '4px',
+    });
+    if (!document.getElementById('__shim_spin_kf__')) {
+      const style = document.createElement('style');
+      style.id = '__shim_spin_kf__';
+      style.textContent = '@keyframes shimSpin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(style);
+    }
+    const title = document.createElement('div');
+    title.textContent = S('shimControlChecking', 'Checking…');
+    Object.assign(title.style, {
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '13px',
+      fontWeight: '500',
+    });
+    const desc = document.createElement('div');
+    desc.textContent = S('shimControlCheckingDescription', 'Collecting bridge, provider, failover, and binding status.');
+    Object.assign(desc.style, {
+      fontSize: '12px',
+      lineHeight: '1.5',
+      maxWidth: '320px',
+    });
+    wrap.appendChild(spinner);
+    wrap.appendChild(title);
+    wrap.appendChild(desc);
+    loading.appendChild(wrap);
+    return loading;
+  }
+
+  async function refreshControlPanel(panel) {
+    const body = panel.querySelector('[data-shim-control-body]');
+    if (!body) return;
+    // labels 由 /provider/list 响应填充, 这里主动拉一次确保 i18n 是最新的,
+    // 否则用户在 dart 改了文案后 JS 端 shimProviderState.labels 仍是旧值。
+    // 用 Promise.all 让 labels 跟 snapshot 并行拉,不卡渲染。
+    const [, snapshot] = await Promise.all([
+      refreshProviderPickerState({ rebuildPopover: false }),
+      loadControlPanelSnapshot(),
+    ]);
+    shimControlPanelSnapshot = snapshot;
+    if (!document.body.contains(panel)) return;
+    renderControlPanelSnapshot(body, snapshot);
+  }
+
+  async function loadControlPanelSnapshot() {
+    const bridge = await callShimRoute('/echo', { from: 'control-panel' }, 900);
+    const provider = await callShimRoute('/provider/current', {}, 1600);
+    const autoSwitch = await callShimRoute('/auto-switch/get', {}, 1600);
+    const claude = await loadClaudeBindingOverview();
+    const currentThread = {
+      id: currentCodexThreadId() || '',
+      label: currentCodexThreadLabel() || S('shimControlNoCodexThread', 'No active Codex conversation'),
+    };
+    return { bridge, provider, autoSwitch, claude, currentThread };
+  }
+
+  async function callShimRoute(path, payload, timeoutMs) {
+    if (typeof window.shim !== 'function') {
+      return { ok: false, message: 'bridge not ready' };
+    }
+    let timer;
+    try {
+      const timeout = new Promise((resolve) => {
+        timer = setTimeout(() => resolve({ code: -1, message: 'timeout' }), timeoutMs);
+      });
+      const res = await Promise.race([window.shim(path, payload || {}), timeout]);
+      if (res && res.code === 0) return { ok: true, data: res.data || {} };
+      return { ok: false, message: res?.message || 'rpc error' };
+    } catch (error) {
+      return { ok: false, message: error?.message || String(error) };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  async function loadClaudeBindingOverview() {
+    const res = await callShimRoute('/claude-bridge/list', {}, 1600);
+    if (!res.ok) {
+      return {
+        tone: 'error',
+        value: `${S('shimControlClaudeBindingFailed', 'Binding status unavailable')}: ${res.message || ''}`,
+        count: 0,
+        details: [],
+      };
+    }
+    const bindings = Array.isArray(res.data.bindings) ? res.data.bindings : [];
+    if (!bindings.length) {
+      return {
+        tone: 'muted',
+        value: S('shimControlClaudeBindingEmpty', 'No Codex conversations are bound'),
+        count: 0,
+        details: [],
+      };
+    }
+    const details = bindings.map((binding) => {
+      const codexThreadId = binding.codexThreadId || '';
+      const claudeTitle = binding.title || binding.sessionId || S('shimControlClaudeSession', 'Claude session');
+      const codexTitle = codexThreadLabelById(codexThreadId) ||
+        (codexThreadId === '__legacy_claude_binding__'
+          ? S('shimControlLegacyBinding', 'Legacy global binding')
+          : shortThreadId(codexThreadId));
+      if (codexThreadId) {
+        applyClaudeBridgeStateForThread(codexThreadId, {
+          bound: true,
+          codexThreadId,
+          sessionId: binding.sessionId,
+          jsonlPath: binding.jsonlPath,
+          title: binding.title,
+        });
+      }
+      return {
+        source: codexTitle,
+        target: claudeTitle,
+        codexThreadId,
+        sessionId: binding.sessionId || '',
+      };
+    });
+    return {
+      tone: 'success',
+      value: `${bindings.length} ${S('shimControlClaudeBindingCount', 'Codex conversations bound')}`,
+      count: bindings.length,
+      details,
+    };
+  }
+
+  function renderControlPanelSnapshot(body, snapshot) {
+    body.innerHTML = '';
+    const model = controlPanelViewModel(snapshot);
+    body.appendChild(buildStatusPreviewPage(snapshot, model));
+  }
+
+  // 一旦内容溢出 popover 自身的高度,左/右两列各自滚动比整页滚动更舒服:
+  // 用户能边看右侧的 binding 列表边对照左侧的供应商详情。
+  function buildStatusPreviewPage(snapshot, model) {
+    const narrow = window.innerWidth < 760;
+
+    const page = document.createElement('div');
+    Object.assign(page.style, {
+      minHeight: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    });
+
+    page.appendChild(buildOverviewPageHeader());
+
+    const scroll = document.createElement('div');
+    Object.assign(scroll.style, {
+      flex: '1 1 auto',
+      minHeight: '0',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      padding: narrow ? '16px 18px 22px' : '8px 28px 24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '20px',
+    });
+
+    scroll.appendChild(buildStatusBar(snapshot, model));
+
+    const workbench = document.createElement('div');
+    Object.assign(workbench.style, {
+      display: 'grid',
+      gridTemplateColumns: narrow ? '1fr' : 'minmax(0, 1fr) minmax(260px, 320px)',
+      gap: narrow ? '20px' : '24px',
+      alignItems: 'stretch',
+      minHeight: '0',
+    });
+
+    const leftCol = document.createElement('div');
+    Object.assign(leftCol.style, {
+      minWidth: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '20px',
+      order: narrow ? '2' : '1',
+    });
+    const currentContext = buildCurrentContextCard(snapshot);
+    if (currentContext) leftCol.appendChild(currentContext);
+    leftCol.appendChild(buildProviderSection(model));
+
+    const rightCol = document.createElement('div');
+    Object.assign(rightCol.style, {
+      minWidth: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      order: narrow ? '1' : '2',
+    });
+    rightCol.appendChild(buildBindingTable(snapshot));
+
+    workbench.appendChild(leftCol);
+    workbench.appendChild(rightCol);
+    scroll.appendChild(workbench);
+
+    page.appendChild(scroll);
+    return page;
+  }
+
+  function buildOverviewPageHeader() {
+    const header = document.createElement('div');
+    Object.assign(header.style, {
+      padding: '22px 28px 14px',
+      flex: '0 0 auto',
+      borderBottom: '1px solid var(--token-border, rgba(255,255,255,0.05))',
+    });
+    const title = document.createElement('h2');
+    title.textContent = S('shimControlOverviewTab', 'Data overview');
+    Object.assign(title.style, {
+      margin: '0 0 4px',
+      fontSize: '16px',
+      fontWeight: '600',
+      color: 'var(--token-text-primary, currentColor)',
+      letterSpacing: '0.1px',
+    });
+    const desc = document.createElement('div');
+    desc.textContent = S('shimControlCheckingDescription', 'Collecting bridge, provider, failover, and binding status.');
+    Object.assign(desc.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      fontSize: '12px',
+      lineHeight: '1.5',
+    });
+    header.appendChild(title);
+    header.appendChild(desc);
+    return header;
+  }
+
+  // 顶部健康状态条:一行四个 chip,Bridge/Provider/Auto/Mappings 各占一格。
+  // 用户一眼看全, 不需要扫描 4 个 detail row。
+  function buildStatusBar(snapshot, model) {
+    const bar = document.createElement('div');
+    Object.assign(bar.style, {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: '8px',
+    });
+    bar.appendChild(buildStatusChip(
+      S('shimControlBridge', 'Bridge'),
+      snapshot.bridge.ok
+        ? S('shimControlBridgeReady', 'Connected')
+        : S('shimControlBridgeFailed', 'Unavailable'),
+      model.bridgeTone,
+    ));
+    bar.appendChild(buildStatusChip(
+      S('shimControlProvider', 'Provider'),
+      model.providerName || S('shimControlProviderEmpty', 'No active provider'),
+      model.providerTone,
+    ));
+    bar.appendChild(buildStatusChip(
+      S('shimControlAutoSwitch', 'Auto switch'),
+      snapshot.autoSwitch.ok
+        ? model.strategyLabel
+        : S('shimControlAutoSwitchFailed', 'Unavailable'),
+      model.autoTone,
+    ));
+    bar.appendChild(buildStatusChip(
+      S('shimControlClaudeBinding', 'Context mapping'),
+      `${snapshot.claude.count || 0} ${S('shimControlBoundMetricSuffix', 'mappings')}`,
+      snapshot.claude.tone || 'muted',
+    ));
+    return bar;
+  }
+
+  function buildStatusChip(label, value, tone) {
+    const chip = document.createElement('div');
+    Object.assign(chip.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      minWidth: '0',
+      padding: '10px 12px',
+      borderRadius: '10px',
+      background: 'rgba(255,255,255,0.028)',
+      border: '1px solid var(--token-border, rgba(255,255,255,0.05))',
     });
     const dot = document.createElement('span');
     Object.assign(dot.style, {
       width: '8px',
       height: '8px',
-      borderRadius: '50%',
-      background: '#22c55e',
-      boxShadow: '0 0 6px rgba(34, 197, 94, 0.8)',
+      borderRadius: '999px',
+      background: statusToneColor(tone),
+      boxShadow: tone === 'success' || tone === 'error'
+        ? `0 0 8px ${statusToneSoftBackground(tone)}`
+        : 'none',
+      flex: '0 0 auto',
     });
-    const titleText = document.createElement('span');
-    titleText.textContent = 'Shim Injected';
-    titleRow.appendChild(dot);
-    titleRow.appendChild(titleText);
+    const text = document.createElement('div');
+    Object.assign(text.style, {
+      minWidth: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1px',
+    });
+    const labelEl = document.createElement('div');
+    labelEl.textContent = label;
+    Object.assign(labelEl.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      fontSize: '11px',
+      fontWeight: '500',
+      letterSpacing: '0.2px',
+    });
+    const valueEl = document.createElement('div');
+    valueEl.textContent = value;
+    valueEl.title = value;
+    Object.assign(valueEl.style, {
+      color: tone === 'error' ? statusToneColor(tone) : 'var(--token-text-primary, currentColor)',
+      fontSize: '12.5px',
+      fontWeight: '600',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    text.appendChild(labelEl);
+    text.appendChild(valueEl);
+    chip.appendChild(dot);
+    chip.appendChild(text);
+    return chip;
+  }
 
-    const version = document.createElement('div');
-    version.textContent = 'v0.1.0';
-    Object.assign(version.style, {
-      color: 'rgba(255, 255, 255, 0.6)',
+  function buildProviderSection(model) {
+    const section = buildPanelSection(S('shimControlProviderSection', 'Provider details'));
+
+    if (model.providerTone !== 'success') {
+      section.appendChild(buildEmptyState(
+        ICON_PROVIDER_EMPTY,
+        S('shimControlProviderEmpty', 'No active provider'),
+        S('shimControlProviderEmptyDescription', 'Codex is using its current default provider.'),
+      ));
+      return section;
+    }
+
+    // 主信息: name + model 突出, protocol/weights/strategy 用元数据行带过
+    const head = document.createElement('div');
+    Object.assign(head.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      padding: '4px 0 10px',
+    });
+    const name = document.createElement('div');
+    name.textContent = model.providerName || model.providerLabel;
+    name.title = name.textContent;
+    Object.assign(name.style, {
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '15px',
+      fontWeight: '600',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    const sub = document.createElement('div');
+    sub.textContent = model.providerModel || S('shimControlProviderModelEmpty', 'Passthrough');
+    sub.title = sub.textContent;
+    Object.assign(sub.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.62))',
+      fontSize: '13px',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    head.appendChild(name);
+    head.appendChild(sub);
+    section.appendChild(head);
+
+    section.appendChild(buildMetaRow([
+      { label: S('shimControlProviderProtocol', 'Protocol'), value: model.providerProtocol || '—' },
+      {
+        label: S('shimControlProviderWeights', 'Weights'),
+        value: model.providerWeight == null ? '—' : `${model.providerWeight}/${model.modelWeight ?? '—'}`,
+      },
+      { label: S('shimControlCurrentMode', 'Mode'), value: model.strategyLabel },
+    ]));
+
+    const hint = model.strategy === 'manual'
+      ? S('shimControlAutoSwitchManualDescription', 'Automatic failover is standing by.')
+      : S('shimControlAutoSwitchDescription', 'Provider health can trigger failover.');
+    section.appendChild(buildPanelHint(hint));
+    return section;
+  }
+
+  // 一行 N 项: label / value, 用中点分隔。比 detail row 节省空间。
+  function buildMetaRow(items) {
+    const row = document.createElement('div');
+    Object.assign(row.style, {
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'baseline',
+      gap: '12px 16px',
+      paddingTop: '10px',
+      borderTop: '1px solid var(--token-border, rgba(255,255,255,0.05))',
+    });
+    for (const item of items) {
+      const node = document.createElement('div');
+      Object.assign(node.style, {
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '6px',
+        minWidth: '0',
+      });
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      Object.assign(label.style, {
+        color: 'var(--token-text-secondary, rgba(255,255,255,0.48))',
+        fontSize: '11px',
+        fontWeight: '500',
+        letterSpacing: '0.2px',
+      });
+      const value = document.createElement('span');
+      value.textContent = item.value;
+      value.title = item.value;
+      Object.assign(value.style, {
+        color: 'var(--token-text-primary, currentColor)',
+        fontSize: '12.5px',
+        fontWeight: '500',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      });
+      node.appendChild(label);
+      node.appendChild(value);
+      row.appendChild(node);
+    }
+    return row;
+  }
+
+  const ICON_PROVIDER_EMPTY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.5"/><path d="M9 11h6M9 14h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  const ICON_BINDING_EMPTY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 7a3 3 0 1 0 0 6h2M15 17a3 3 0 1 0 0-6h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+  function buildEmptyState(iconHtml, title, description) {
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '28px 16px',
+      textAlign: 'center',
+    });
+    const icon = document.createElement('div');
+    icon.innerHTML = iconHtml;
+    Object.assign(icon.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.32))',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+    const t = document.createElement('div');
+    t.textContent = title;
+    Object.assign(t.style, {
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '13px',
+      fontWeight: '600',
+    });
+    const d = document.createElement('div');
+    d.textContent = description;
+    Object.assign(d.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.48))',
       fontSize: '12px',
+      lineHeight: '1.5',
+      maxWidth: '260px',
+    });
+    wrap.appendChild(icon);
+    wrap.appendChild(t);
+    wrap.appendChild(d);
+    return wrap;
+  }
+
+  function controlPanelViewModel(snapshot) {
+    const providerData = snapshot.provider.data || {};
+    const providerLabel = snapshot.provider.ok
+      ? (providerData.label || S('shimControlProviderEmpty', 'No active provider'))
+      : `${S('shimControlProviderFailed', 'Provider unavailable')}: ${snapshot.provider.message || ''}`;
+    const autoData = snapshot.autoSwitch.data || {};
+    const labels = autoData.labels || {};
+    const strategy = autoData.strategy || 'manual';
+    const strategyLabel = labels[`strategy${strategy.charAt(0).toUpperCase()}${strategy.slice(1)}`] || strategy;
+    const bridgeValue = snapshot.bridge.ok
+      ? S('shimControlBridgeReady', 'Connected')
+      : `${S('shimControlBridgeFailed', 'Unavailable')}: ${snapshot.bridge.message || ''}`;
+    const autoValue = snapshot.autoSwitch.ok
+      ? strategyLabel
+      : `${S('shimControlAutoSwitchFailed', 'Unavailable')}: ${snapshot.autoSwitch.message || ''}`;
+    return {
+      providerLabel,
+      strategy,
+      strategyLabel,
+      bridgeValue,
+      autoValue,
+      providerName: providerData.name || '',
+      providerModel: providerData.model || '',
+      providerProtocol: providerData.protocol || '',
+      providerWeight: providerData.providerWeight,
+      modelWeight: providerData.modelWeight,
+      providerTone: snapshot.provider.ok && providerData.label ? 'success' : 'muted',
+      autoTone: snapshot.autoSwitch.ok && strategy !== 'manual' ? 'success' : 'muted',
+      bridgeTone: snapshot.bridge.ok ? 'success' : 'error',
+    };
+  }
+
+  function buildPanelHint(text) {
+    const hint = document.createElement('div');
+    hint.textContent = text || '';
+    Object.assign(hint.style, {
+      marginTop: '12px',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.42))',
+      fontSize: '12px',
+      lineHeight: '1.5',
+    });
+    return hint;
+  }
+
+  function buildPanelSection(title) {
+    const section = document.createElement('section');
+    Object.assign(section.style, {
+      padding: '0',
+    });
+    const heading = document.createElement('div');
+    heading.textContent = title;
+    Object.assign(heading.style, {
+      marginBottom: '12px',
+      paddingBottom: '8px',
+      borderBottom: '1px solid var(--token-border, rgba(255,255,255,0.06))',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.55))',
+      fontSize: '11px',
+      fontWeight: '600',
+      letterSpacing: '0.6px',
+      textTransform: 'uppercase',
+    });
+    section.appendChild(heading);
+    return section;
+  }
+
+  // 对话映射表在右列, 自己独立滚动, 内部 max-height 限制让它不会撑爆 popover。
+  function buildBindingTable(snapshot) {
+    const details = snapshot.claude.details || [];
+    const section = buildPanelSection(
+      `${S('shimControlBindingsSection', 'Claude bindings')}${details.length ? ` · ${details.length}` : ''}`,
+    );
+    Object.assign(section.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '0',
+      flex: '1 1 auto',
     });
 
-    popover.appendChild(titleRow);
-    popover.appendChild(version);
-    return popover;
+    if (!details.length) {
+      section.appendChild(buildEmptyState(
+        ICON_BINDING_EMPTY,
+        S('shimControlClaudeBindingEmpty', 'No Codex conversations are mapped'),
+        S('shimControlClaudeBindingEmptyDescription', 'Bind a Claude session from the sidebar to continue context here.'),
+      ));
+      return section;
+    }
+
+    const list = document.createElement('div');
+    Object.assign(list.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      maxHeight: '380px',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      paddingRight: '4px',
+      marginRight: '-4px',
+    });
+
+    for (const item of details) {
+      list.appendChild(buildBindingRow(item, snapshot.currentThread?.id));
+    }
+
+    section.appendChild(list);
+    return section;
+  }
+
+  // 一行卡片式的映射: codex 标题 / 箭头 / claude 标题。
+  // 当前对话所在行用蓝色描边强调。
+  function buildBindingRow(item, currentThreadId) {
+    const row = document.createElement('div');
+    const current = item.codexThreadId && item.codexThreadId === currentThreadId;
+    Object.assign(row.style, {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) 18px minmax(0, 1fr)',
+      alignItems: 'center',
+      gap: '10px',
+      padding: '10px 12px',
+      borderRadius: '8px',
+      background: current ? 'rgba(96,165,250,0.10)' : 'rgba(255,255,255,0.018)',
+      border: `1px solid ${current ? 'rgba(96,165,250,0.30)' : 'var(--token-border, rgba(255,255,255,0.05))'}`,
+      transition: 'background 140ms ease, border-color 140ms ease',
+    });
+    if (!current) {
+      row.addEventListener('mouseenter', () => {
+        row.style.background = 'rgba(255,255,255,0.038)';
+      });
+      row.addEventListener('mouseleave', () => {
+        row.style.background = 'rgba(255,255,255,0.018)';
+      });
+    }
+    row.appendChild(buildRelationText(item.source || ''));
+    const arrow = document.createElement('span');
+    arrow.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    Object.assign(arrow.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: current ? '#60a5fa' : 'var(--token-text-secondary, rgba(255,255,255,0.32))',
+    });
+    row.appendChild(arrow);
+    row.appendChild(buildRelationText(item.target || ''));
+    return row;
+  }
+
+  // 没选中 Codex 对话时整张卡彻底不渲染 — 返回 null, 调用方负责跳过。
+  // 选中后用一张突出的卡片显示: thread title + id + 映射状态 + 已映射的 claude 会话名。
+  function buildCurrentContextCard(snapshot) {
+    const thread = snapshot.currentThread || {};
+    const currentId = thread.id || '';
+    if (!currentId) return null;
+
+    const currentBinding = (snapshot.claude.details || []).find((item) =>
+      item && typeof item === 'object' && item.codexThreadId === currentId);
+    const tone = currentBinding ? 'success' : 'info';
+
+    const card = document.createElement('div');
+    Object.assign(card.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+      padding: '16px 18px',
+      borderRadius: '12px',
+      background: tone === 'success'
+        ? 'linear-gradient(135deg, rgba(96,165,250,0.08), rgba(255,255,255,0.025))'
+        : 'rgba(255,255,255,0.032)',
+      border: `1px solid ${tone === 'success' ? 'rgba(96,165,250,0.22)' : 'var(--token-border, rgba(255,255,255,0.06))'}`,
+    });
+
+    const topRow = document.createElement('div');
+    Object.assign(topRow.style, {
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: '12px',
+      minWidth: '0',
+    });
+
+    const titleWrap = document.createElement('div');
+    Object.assign(titleWrap.style, {
+      minWidth: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      flex: '1 1 auto',
+    });
+    const label = document.createElement('div');
+    label.textContent = S('shimControlCurrentThread', 'Current thread');
+    Object.assign(label.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      fontSize: '11px',
+      fontWeight: '500',
+      letterSpacing: '0.4px',
+      textTransform: 'uppercase',
+    });
+    const title = document.createElement('div');
+    title.textContent = thread.label || S('shimControlNoCodexThread', 'No active Codex conversation');
+    title.title = thread.label || '';
+    Object.assign(title.style, {
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '14px',
+      fontWeight: '600',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    titleWrap.appendChild(label);
+    titleWrap.appendChild(title);
+
+    const badge = document.createElement('span');
+    badge.textContent = currentBinding
+      ? S('shimControlBoundTo', 'Mapped to').replace(/\s*[:：]?$/, '')
+      : S('shimControlReadyToBind', 'Not mapped');
+    Object.assign(badge.style, {
+      flex: '0 0 auto',
+      padding: '4px 10px',
+      borderRadius: '999px',
+      color: statusToneColor(tone),
+      background: statusToneSoftBackground(tone),
+      fontSize: '11px',
+      fontWeight: '600',
+      letterSpacing: '0.2px',
+      whiteSpace: 'nowrap',
+    });
+
+    topRow.appendChild(titleWrap);
+    topRow.appendChild(badge);
+    card.appendChild(topRow);
+
+    const idRow = document.createElement('div');
+    Object.assign(idRow.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      minWidth: '0',
+    });
+    const idText = document.createElement('span');
+    idText.textContent = shortThreadId(currentId);
+    idText.title = currentId;
+    Object.assign(idText.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.55))',
+      fontSize: '12px',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    idRow.appendChild(idText);
+    idRow.appendChild(buildCopyIdButton(currentId));
+    card.appendChild(idRow);
+
+    if (currentBinding) {
+      const mapped = document.createElement('div');
+      Object.assign(mapped.style, {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '10px 12px',
+        borderRadius: '8px',
+        background: 'rgba(0,0,0,0.16)',
+        minWidth: '0',
+      });
+      const arrow = document.createElement('span');
+      arrow.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      Object.assign(arrow.style, {
+        color: '#60a5fa',
+        flex: '0 0 auto',
+        display: 'inline-flex',
+      });
+      const target = document.createElement('span');
+      target.textContent = currentBinding.target || S('shimControlClaudeSession', 'Claude session');
+      target.title = target.textContent;
+      Object.assign(target.style, {
+        color: 'var(--token-text-primary, currentColor)',
+        fontSize: '13px',
+        fontWeight: '500',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      });
+      mapped.appendChild(arrow);
+      mapped.appendChild(target);
+      card.appendChild(mapped);
+    }
+
+    return card;
+  }
+
+  function buildCopyIdButton(currentId) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', S('shimControlCopyThreadId', 'Copy ID'));
+    btn.setAttribute('title', S('shimControlCopyThreadId', 'Copy ID'));
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="8" height="9" rx="1.4" stroke="currentColor" stroke-width="1.3"/><path d="M11 5V3.4a1.4 1.4 0 0 0-1.4-1.4H4.4A1.4 1.4 0 0 0 3 3.4v6.2A1.4 1.4 0 0 0 4.4 11H5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+    Object.assign(btn.style, {
+      flex: '0 0 auto',
+      width: '22px',
+      height: '22px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '0',
+      borderRadius: '5px',
+      background: 'transparent',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      cursor: 'pointer',
+      transition: 'background 140ms ease, color 140ms ease',
+    });
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'rgba(255,255,255,0.06)';
+      btn.style.color = 'var(--token-text-primary, #f8fafc)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.5))';
+    });
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      copyTextToClipboard(currentId, S('shimControlThreadIdCopied', 'Thread ID copied'));
+    });
+    return btn;
+  }
+
+  function buildRelationText(text) {
+    const node = document.createElement('span');
+    node.textContent = text || '';
+    node.title = text || '';
+    Object.assign(node.style, {
+      minWidth: '0',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '13px',
+      fontWeight: '500',
+    });
+    return node;
+  }
+
+  function statusToneColor(tone) {
+    if (tone === 'success') return '#93c5fd';
+    if (tone === 'warning') return '#f59e0b';
+    if (tone === 'error') return '#ef4444';
+    if (tone === 'info') return '#cbd5e1';
+    return 'var(--token-text-secondary, rgba(255,255,255,0.68))';
+  }
+
+  function statusToneSoftBackground(tone) {
+    if (tone === 'success') return 'rgba(59,130,246,0.12)';
+    if (tone === 'warning') return 'rgba(245,158,11,0.13)';
+    if (tone === 'error') return 'rgba(239,68,68,0.13)';
+    if (tone === 'info') return 'rgba(148,163,184,0.12)';
+    return 'rgba(255,255,255,0.06)';
+  }
+
+  function statusToneBorder(tone) {
+    if (tone === 'success') return 'rgba(59,130,246,0.28)';
+    if (tone === 'warning') return 'rgba(245,158,11,0.34)';
+    if (tone === 'error') return 'rgba(239,68,68,0.34)';
+    if (tone === 'info') return 'rgba(148,163,184,0.22)';
+    return 'rgba(255,255,255,0.08)';
+  }
+
+  function statusToneLabel(tone) {
+    if (tone === 'success') return S('shimControlStatusOk', 'OK');
+    if (tone === 'warning') return S('shimControlStatusWarn', 'Warn');
+    if (tone === 'error') return S('shimControlStatusError', 'Error');
+    if (tone === 'info') return S('shimControlStatusInfo', 'Info');
+    return S('shimControlStatusIdle', 'Idle');
+  }
+
+  function currentCodexThreadLabel() {
+    const active = document.querySelector('[data-app-action-sidebar-thread-active="true"]');
+    if (!active) return '';
+    const title = active.getAttribute('data-app-action-sidebar-thread-title') ||
+      active.querySelector('[data-thread-title]')?.textContent?.trim() ||
+      active.textContent?.trim() ||
+      '';
+    return title.replace(/\s+/g, ' ').trim();
+  }
+
+  function codexThreadLabelById(threadId) {
+    if (!threadId) return '';
+    const rows = document.querySelectorAll('[data-app-action-sidebar-thread-id]');
+    for (const row of rows) {
+      const raw = row.getAttribute('data-app-action-sidebar-thread-id') || '';
+      const id = raw.includes(':') ? raw.split(':').slice(1).join(':') : raw;
+      if (id !== threadId) continue;
+      const title = row.getAttribute('data-app-action-sidebar-thread-title') ||
+        row.querySelector('[data-thread-title]')?.textContent?.trim() ||
+        row.textContent?.trim() ||
+        '';
+      return title.replace(/\s+/g, ' ').trim();
+    }
+    return '';
+  }
+
+  function shortThreadId(id) {
+    const text = String(id || '');
+    if (text.length <= 10) return text;
+    return `${text.slice(0, 6)}…${text.slice(-4)}`;
   }
 
   function positionPopover(popover, anchor) {
-    const rect = anchor.getBoundingClientRect();
     const popRect = popover.getBoundingClientRect();
-    const gap = 8;
-    let left = rect.right + gap;
-    let top = rect.top;
-    if (left + popRect.width > window.innerWidth - 8) {
-      left = rect.left - popRect.width - gap;
-    }
-    if (left < 8) left = 8;
-    if (top + popRect.height > window.innerHeight - 8) {
-      top = window.innerHeight - popRect.height - 8;
-    }
-    if (top < 8) top = 8;
+    const left = Math.max(20, Math.round((window.innerWidth - popRect.width) / 2));
+    const top = Math.max(24, Math.round((window.innerHeight - popRect.height) / 2));
     popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
   }
@@ -447,7 +1608,7 @@
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
       pointerEvents: 'auto',
       borderLeft: `3px solid ${
-        kind === 'error' ? '#ef4444' : kind === 'success' ? '#22c55e' : '#3b82f6'
+        kind === 'error' ? '#ef4444' : kind === 'success' ? '#60a5fa' : '#3b82f6'
       }`,
       opacity: '0',
       transform: 'translateY(-8px)',
@@ -1342,8 +2503,8 @@
       chip.style.background = 'rgba(234, 179, 8, 0.18)';
       chip.style.color = '#eab308';
     } else {
-      chip.style.background = 'rgba(34, 197, 94, 0.18)';
-      chip.style.color = '#22c55e';
+      chip.style.background = 'rgba(59, 130, 246, 0.16)';
+      chip.style.color = '#93c5fd';
     }
     return chip;
   }
@@ -1874,7 +3035,7 @@
       width: '6px',
       height: '6px',
       borderRadius: '50%',
-      background: '#22c55e',
+      background: '#60a5fa',
     });
 
     const text = document.createElement('span');
@@ -1983,7 +3144,7 @@
     ].join(',')).forEach((node) => node.remove());
     let text = normalizePreviewText(clone.textContent);
     if (!text) text = S('threadPreviewEmptyMessage', 'Empty message');
-    return text.length > 160 ? text.slice(0, 157) + '...' : text;
+    return text.length > 240 ? text.slice(0, 237) + '...' : text;
   }
 
   function turnRole(turn, index, text) {
@@ -2015,23 +3176,23 @@
       return {
         icon: 'T',
         label: S('threadPreviewToolRole', 'Tool'),
-        color: 'var(--token-text-secondary, var(--text-secondary, currentColor))',
-        background: 'var(--token-main-surface-tertiary, rgba(127, 127, 127, 0.14))',
+        color: '#f59e0b',
+        background: 'rgba(245, 158, 11, 0.14)',
       };
     }
     if (role === 'user') {
       return {
         icon: 'U',
         label: S('threadPreviewUserRole', 'User'),
-        color: 'var(--token-text-primary, currentColor)',
-        background: 'var(--token-main-surface-secondary, rgba(127, 127, 127, 0.12))',
+        color: '#38bdf8',
+        background: 'rgba(56, 189, 248, 0.14)',
       };
     }
     return {
       icon: 'A',
       label: S('threadPreviewAssistantRole', 'Assistant'),
-      color: 'var(--token-text-secondary, var(--text-secondary, currentColor))',
-      background: 'transparent',
+      color: '#93c5fd',
+      background: 'rgba(59, 130, 246, 0.12)',
     };
   }
 
@@ -2141,13 +3302,13 @@
     const available = contentLeft - navRight - 24;
     const bounds = previewVerticalBounds(turns, scrollTarget);
     const height = bounds.bottom - bounds.top;
-    if (!contentLeft || available < 42 || height < 120 || window.innerWidth < 900) {
+    if (!contentLeft || available < 196 || height < 120 || window.innerWidth < 980) {
       panel.style.display = 'none';
       hideThreadPreviewLens();
       return false;
     }
-    const width = 28;
-    const left = Math.max(navRight + 8, contentLeft - width - 12);
+    const width = Math.min(280, Math.max(204, available - 10));
+    const left = Math.max(navRight + 10, contentLeft - width - 14);
     Object.assign(panel.style, {
       display: 'flex',
       position: 'fixed',
@@ -2162,28 +3323,28 @@
 
   function itemStyle(item, active) {
     Object.assign(item.style, {
-      display: 'flex',
+      display: 'grid',
+      gridTemplateColumns: '30px minmax(0, 1fr)',
       alignItems: 'center',
-      justifyContent: 'center',
-      width: active ? '22px' : '18px',
-      height: active ? '22px' : '18px',
-      minHeight: active ? '22px' : '18px',
-      padding: '0',
+      gap: '9px',
+      width: '100%',
+      minHeight: '62px',
+      padding: '9px 10px',
       border: active
-        ? '1px solid var(--token-text-primary, currentColor)'
-        : '1px solid var(--token-border, rgba(127, 127, 127, 0.24))',
-      borderRadius: '999px',
+        ? '1px solid rgba(59, 130, 246, 0.34)'
+        : '1px solid var(--token-border, rgba(127, 127, 127, 0.18))',
+      borderRadius: '12px',
       background: active
-        ? 'var(--token-main-surface-secondary, rgba(127, 127, 127, 0.18))'
-        : 'transparent',
+        ? 'linear-gradient(135deg, rgba(59,130,246,0.13), rgba(148,163,184,0.06))'
+        : 'rgba(255,255,255,0.035)',
       color: active
         ? 'var(--token-text-primary, currentColor)'
         : 'var(--token-text-secondary, var(--text-secondary, currentColor))',
       cursor: 'pointer',
-      font: '800 9px/1 system-ui, -apple-system, sans-serif',
-      textAlign: 'center',
-      opacity: active ? '1' : '0.68',
-      transition: 'width 80ms ease, height 80ms ease, opacity 80ms ease, background 80ms ease, border-color 80ms ease',
+      font: '500 12px/1.35 system-ui, -apple-system, sans-serif',
+      textAlign: 'left',
+      opacity: active ? '1' : '0.76',
+      transition: 'opacity 100ms ease, background 100ms ease, border-color 100ms ease, transform 100ms ease',
     });
   }
 
@@ -2285,29 +3446,66 @@
 
     const meta = rolePreviewMeta(item.role);
     const icon = document.createElement('span');
-    icon.textContent = previewGlyphForItem(item);
+    icon.textContent = meta.icon;
     Object.assign(icon.style, {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       flex: '0 0 auto',
-      width: '100%',
-      height: '100%',
-      borderRadius: '999px',
+      width: '30px',
+      height: '30px',
+      borderRadius: '10px',
       background: meta.background,
       color: meta.color,
-      fontSize: '9px',
+      fontSize: '12px',
       fontWeight: '800',
       lineHeight: '1',
     });
 
     button.appendChild(icon);
+
+    const content = document.createElement('span');
+    Object.assign(content.style, {
+      minWidth: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '3px',
+    });
+
+    const headline = document.createElement('span');
+    headline.textContent = `${meta.label} #${item.index + 1}`;
+    Object.assign(headline.style, {
+      display: 'block',
+      color: activePreviewLabelColor(item.role),
+      fontSize: '11px',
+      fontWeight: '800',
+      lineHeight: '1.1',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    });
+
+    const summary = document.createElement('span');
+    summary.textContent = item.text;
+    Object.assign(summary.style, {
+      display: '-webkit-box',
+      WebkitBoxOrient: 'vertical',
+      WebkitLineClamp: '2',
+      overflow: 'hidden',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.66))',
+      fontSize: '12px',
+      lineHeight: '1.35',
+      overflowWrap: 'anywhere',
+    });
+    content.appendChild(headline);
+    content.appendChild(summary);
+    button.appendChild(content);
+
     button.addEventListener('mouseenter', () => {
       if (button.getAttribute(THREAD_PREVIEW_ACTIVE_ATTR) !== '1') {
-        button.style.background = 'var(--token-main-surface-secondary, rgba(127, 127, 127, 0.14))';
+        button.style.background = 'rgba(255,255,255,0.075)';
         button.style.opacity = '1';
-        button.style.width = '22px';
-        button.style.height = '22px';
+        button.style.transform = 'translateX(2px)';
       }
       showThreadPreviewLens(button, item);
     });
@@ -2329,23 +3527,29 @@
     return button;
   }
 
+  function activePreviewLabelColor(role) {
+    return rolePreviewMeta(role).color || 'var(--token-text-primary, currentColor)';
+  }
+
   function buildThreadPreviewPanel(items) {
     const panel = document.createElement('div');
     panel.id = THREAD_PREVIEW_ID;
     panel.setAttribute('role', 'navigation');
     panel.setAttribute('aria-label', S('threadPreviewAria', 'Conversation preview'));
     Object.assign(panel.style, {
-      alignItems: 'center',
+      alignItems: 'stretch',
       flexDirection: 'column',
-      gap: '5px',
-      padding: '7px 3px',
+      gap: '8px',
+      padding: '10px',
       overflowX: 'hidden',
       overflowY: 'auto',
       overscrollBehavior: 'contain',
-      borderRadius: '999px',
-      background: 'var(--token-main-surface-secondary, transparent)',
-      boxShadow: 'inset 0 0 0 1px var(--token-border, rgba(127,127,127,0.18))',
-      backdropFilter: 'blur(6px)',
+      borderRadius: '18px',
+      border: '1px solid var(--token-border, rgba(127,127,127,0.18))',
+      background:
+        'linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.038)), var(--token-sidebar-surface-primary, rgba(18,18,18,0.9))',
+      boxShadow: '0 18px 46px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
+      backdropFilter: 'blur(12px)',
       userSelect: 'none',
       scrollbarWidth: 'none',
     });
@@ -3357,9 +4561,9 @@
       height: '24px',
       padding: '0 8px',
       borderRadius: '999px',
-      background: 'rgba(34, 197, 94, 0.14)',
-      color: '#22c55e',
-      border: '1px solid rgba(34, 197, 94, 0.32)',
+      background: 'rgba(59, 130, 246, 0.13)',
+      color: '#93c5fd',
+      border: '1px solid rgba(59, 130, 246, 0.28)',
       fontSize: '12px',
       fontWeight: '600',
       lineHeight: '1',
@@ -3443,8 +4647,9 @@
     __t('ensureAll #' + seq + ' before', before);
 
     const t0 = performance.now();
-    ensureBadge();
+    removeInjectedBadge();
     const t1 = performance.now();
+    ensureClaudeBridge();
     ensureShimMenuItem();
     const t2 = performance.now();
     ensureDeleteButtons();
@@ -3459,7 +4664,6 @@
     const t7 = performance.now();
     ensureCodexPluginFeatures();
     const t8 = performance.now();
-    ensureClaudeBridge();
     ensureClaudeBridgeChip();
     const t9 = performance.now();
 

@@ -182,8 +182,9 @@ class _OpenInspectorIcon extends HookConsumerWidget {
           : () async {
               isOpening.value = true;
               try {
-                await ref
-                    .read(openInspectorProvider(debugPort: debugPort).future);
+                await ref.read(
+                  openInspectorProvider(debugPort: debugPort).future,
+                );
               } catch (e) {
                 SmartDialog.showToast(l10n.openInspectorFailed(e.toString()));
               } finally {
@@ -229,10 +230,10 @@ class _ReloadCodexIcon extends HookConsumerWidget {
                 ref.read(providerHealthRouteRegistrationProvider);
                 ref.read(autoSwitchRouteRegistrationProvider);
                 ref.read(providerActionRouteRegistrationProvider);
-                registerClaudeBridgeRoutes(
-                  bridge: bridge,
-                  proxy: ref.read(localProxyServiceProvider),
+                final claudeBridge = ref.read(
+                  claudeBridgeRouteControllerProvider,
                 );
+                await claudeBridge.ensureHydrated();
 
                 await cdp.connect(debugPort);
                 await cdp.reloadPage();
@@ -241,7 +242,9 @@ class _ReloadCodexIcon extends HookConsumerWidget {
                 await bridge.install(documentScripts: [script]);
                 SmartDialog.showToast(l10n.codexRefreshedToast);
               } catch (error) {
-                SmartDialog.showToast(l10n.codexRefreshFailedToast(error.toString()));
+                SmartDialog.showToast(
+                  l10n.codexRefreshFailedToast(error.toString()),
+                );
               } finally {
                 isReloading.value = false;
               }
@@ -275,8 +278,9 @@ class _InjectIcon extends HookConsumerWidget {
               isInjecting.value = true;
               try {
                 ref.invalidate(launchAndInjectProvider(debugPort: debugPort));
-                await ref
-                    .read(launchAndInjectProvider(debugPort: debugPort).future);
+                await ref.read(
+                  launchAndInjectProvider(debugPort: debugPort).future,
+                );
                 SmartDialog.showToast(l10n.injectSuccess);
               } on CodexNotInstalledException {
                 SmartDialog.showToast(l10n.codexNotInstalled);
@@ -308,14 +312,15 @@ class SidebarStatus extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final asyncStatus =
-        ref.watch(isDebugPortAliveProvider(debugPort: debugPort));
+    final asyncStatus = ref.watch(
+      isDebugPortAliveProvider(debugPort: debugPort),
+    );
 
     final pollInterval = asyncStatus.isLoading
         ? const Duration(seconds: 1)
         : asyncStatus.value == true
-            ? const Duration(seconds: 10)
-            : const Duration(seconds: 2);
+        ? const Duration(seconds: 10)
+        : const Duration(seconds: 2);
 
     useEffect(() {
       final timer = Timer.periodic(pollInterval, (_) {
@@ -353,10 +358,7 @@ class SidebarStatus extends HookConsumerWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           SizedBox(width: AppSizes.itemGap),
           Expanded(
@@ -376,9 +378,8 @@ class SidebarStatus extends HookConsumerWidget {
             iconSize: 16,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            onPressed: () => ref.invalidate(
-              isDebugPortAliveProvider(debugPort: debugPort),
-            ),
+            onPressed: () =>
+                ref.invalidate(isDebugPortAliveProvider(debugPort: debugPort)),
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -404,14 +405,14 @@ class ProxyStatus extends ConsumerWidget {
         final dotColor = running
             ? Colors.green
             : enabled
-                ? Colors.orange
-                : colorScheme.onSurfaceVariant;
+            ? Colors.orange
+            : colorScheme.onSurfaceVariant;
         final l10n = context.l10n;
         final text = running
             ? l10n.proxyRunningOnPort(runningPort)
             : enabled
-                ? l10n.proxyEnabledOnPort(proxyConfig?.port ?? 8787)
-                : l10n.proxyDisabled;
+            ? l10n.proxyEnabledOnPort(proxyConfig?.port ?? 8787)
+            : l10n.proxyDisabled;
 
         return Container(
           padding: EdgeInsets.all(10.cw(min: 8, max: 12)),
