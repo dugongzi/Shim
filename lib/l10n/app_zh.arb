@@ -35,6 +35,14 @@
   "desktopShortcut": "桌面快捷方式",
   "desktopShortcutDescription": "一键启动 Codex 并自动注入",
   "createShortcut": "创建快捷方式",
+  "openSourceRepository": "开源地址",
+  "openRepository": "打开仓库",
+  "openSourceRepositoryFailed": "打开仓库失败：{message}",
+  "@openSourceRepositoryFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "shortcutCreated": "快捷方式已创建到桌面",
   "shortcutFailed": "创建失败：{message}",
   "@shortcutFailed": {

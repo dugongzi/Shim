@@ -15,6 +15,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const _shimRepositoryUrl = 'https://github.com/dugongzi/Shim';
 
 class SettingsTab extends ConsumerWidget {
   const SettingsTab({super.key});
@@ -168,6 +171,29 @@ class SettingsTab extends ConsumerWidget {
             ),
           ),
           SizedBox(height: AppSizes.itemGap),
+          SettingCard(
+            icon: Icons.code_rounded,
+            title: context.l10n.openSourceRepository,
+            description: _shimRepositoryUrl,
+            child: FilledButton.tonalIcon(
+              onPressed: () async {
+                final l10n = context.l10n;
+                try {
+                  await launchUrl(
+                    Uri.parse(_shimRepositoryUrl),
+                    mode: LaunchMode.externalApplication,
+                  );
+                } catch (e) {
+                  SmartDialog.showToast(
+                    l10n.openSourceRepositoryFailed(e.toString()),
+                  );
+                }
+              },
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: Text(context.l10n.openRepository),
+            ),
+          ),
+          SizedBox(height: AppSizes.itemGap),
           const _ProxyCard(),
           SizedBox(height: AppSizes.sectionGap),
           Text(
@@ -199,9 +225,9 @@ class _AppVersionLine extends StatelessWidget {
             : 'Shim v${info.version} (${info.buildNumber})';
         return Text(
           text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         );
       },
     );

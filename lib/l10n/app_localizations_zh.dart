@@ -88,6 +88,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get createShortcut => '创建快捷方式';
 
   @override
+  String get openSourceRepository => '开源地址';
+
+  @override
+  String get openRepository => '打开仓库';
+
+  @override
+  String openSourceRepositoryFailed(String message) {
+    return '打开仓库失败：$message';
+  }
+
+  @override
   String get shortcutCreated => '快捷方式已创建到桌面';
 
   @override

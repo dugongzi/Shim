@@ -248,6 +248,24 @@ abstract class AppLocalizations {
   /// **'创建快捷方式'**
   String get createShortcut;
 
+  /// No description provided for @openSourceRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'开源地址'**
+  String get openSourceRepository;
+
+  /// No description provided for @openRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开仓库'**
+  String get openRepository;
+
+  /// No description provided for @openSourceRepositoryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开仓库失败：{message}'**
+  String openSourceRepositoryFailed(String message);
+
   /// No description provided for @shortcutCreated.
   ///
   /// In zh, this message translates to:

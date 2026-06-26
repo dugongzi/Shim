@@ -35,6 +35,14 @@
   "desktopShortcut": "Desktop shortcut",
   "desktopShortcutDescription": "Launch Codex and inject in one click",
   "createShortcut": "Create shortcut",
+  "openSourceRepository": "Open-source repository",
+  "openRepository": "Open repo",
+  "openSourceRepositoryFailed": "Failed to open repository: {message}",
+  "@openSourceRepositoryFailed": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
   "shortcutCreated": "Shortcut created on desktop",
   "shortcutFailed": "Failed to create: {message}",
   "@shortcutFailed": {

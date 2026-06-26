@@ -90,6 +90,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createShortcut => 'Create shortcut';
 
   @override
+  String get openSourceRepository => 'Open-source repository';
+
+  @override
+  String get openRepository => 'Open repo';
+
+  @override
+  String openSourceRepositoryFailed(String message) {
+    return 'Failed to open repository: $message';
+  }
+
+  @override
   String get shortcutCreated => 'Shortcut created on desktop';
 
   @override
