@@ -316,6 +316,15 @@
   // ========== Shim 控制面板 ==========
 
   let shimControlPanelSnapshot = null;
+  // 控制面板当前选中的 tab key。模块级状态, 点击切换 + 重渲染 chrome 即可。
+  let shimControlActiveTab = 'overview';
+  // 日志页面级状态 (只在 logs tab 用)
+  let shimControlLogsState = {
+    loading: false,
+    error: null,
+    entries: [],
+    filter: 'all',
+  };
 
   function buildPopover() {
     const panel = document.createElement('div');
@@ -344,6 +353,27 @@
       flexDirection: 'column',
     });
 
+    renderControlPanelChrome(panel);
+    refreshControlPanel(panel);
+    return panel;
+  }
+
+  const ICON_OVERVIEW = '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>';
+  const ICON_LOGS = '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h10M3 6h10M3 9h7M3 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+  function controlPanelTabs() {
+    return [
+      { key: 'overview', label: S('shimControlOverviewTab', 'Data overview'), icon: ICON_OVERVIEW },
+      { key: 'logs', label: S('shimControlLogsTab', 'Logs'), icon: ICON_LOGS },
+    ];
+  }
+
+  // 把整个 popover 内部(header + sidebar + content)的"外壳"重建一次。
+  // labels 是异步拉的, 第一次渲染时可能还是英文 fallback, 拿到中文后重建以更新所有静态文案。
+  // 同时也是 tab 切换的统一入口 —— 不依赖各 tab 自己增量更新 sidebar。
+  function renderControlPanelChrome(panel) {
+    panel.innerHTML = '';
+
     panel.appendChild(buildControlPanelHeader());
 
     const narrow = window.innerWidth < 760;
@@ -355,7 +385,7 @@
       minHeight: '0',
       overflow: 'hidden',
     });
-    shell.appendChild(buildControlPanelSidebar());
+    shell.appendChild(buildControlPanelSidebar(panel));
 
     const content = document.createElement('div');
     content.setAttribute('data-shim-control-body', '1');
@@ -368,12 +398,38 @@
     shell.appendChild(content);
     panel.appendChild(shell);
 
-    renderControlPanelLoading(content);
-    refreshControlPanel(panel);
-    return panel;
+    renderActiveTab(panel);
   }
 
-  function buildControlPanelSidebar() {
+  // 根据当前 active tab 把 content 区填上对应页面。
+  // overview 用已经拉好的 snapshot (没拉到就 loading); logs 触发自己的 loader。
+  function renderActiveTab(panel) {
+    const body = panel.querySelector('[data-shim-control-body]');
+    if (!body) return;
+    body.innerHTML = '';
+    if (shimControlActiveTab === 'logs') {
+      body.appendChild(buildLogsPage(panel));
+      // 第一次进 logs tab, 或上次出错时, 自动拉一次
+      if (!shimControlLogsState.entries.length && !shimControlLogsState.loading) {
+        reloadLogs(panel);
+      }
+      return;
+    }
+    // overview
+    if (shimControlPanelSnapshot) {
+      renderControlPanelSnapshot(body, shimControlPanelSnapshot);
+    } else {
+      renderControlPanelLoading(body);
+    }
+  }
+
+  function switchControlTab(panel, key) {
+    if (shimControlActiveTab === key) return;
+    shimControlActiveTab = key;
+    renderControlPanelChrome(panel);
+  }
+
+  function buildControlPanelSidebar(panel) {
     const sidebar = document.createElement('aside');
     Object.assign(sidebar.style, {
       display: 'flex',
@@ -397,13 +453,17 @@
     });
     sidebar.appendChild(navLabel);
 
-    const ICON_OVERVIEW = '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>';
-    sidebar.appendChild(buildSidebarNavItem(ICON_OVERVIEW, S('shimControlOverviewTab', 'Data overview'), true));
+    for (const tab of controlPanelTabs()) {
+      const active = tab.key === shimControlActiveTab;
+      sidebar.appendChild(buildSidebarNavItem(tab.icon, tab.label, active, () => {
+        switchControlTab(panel, tab.key);
+      }));
+    }
 
     return sidebar;
   }
 
-  function buildSidebarNavItem(iconHtml, label, active) {
+  function buildSidebarNavItem(iconHtml, label, active, onClick) {
     const item = document.createElement('button');
     item.type = 'button';
     Object.assign(item.style, {
@@ -453,6 +513,11 @@
       item.addEventListener('mouseleave', () => {
         item.style.background = 'transparent';
         item.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.62))';
+      });
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick && onClick();
       });
     }
     return item;
@@ -574,11 +639,26 @@
     const panel = document.getElementById(POPOVER_ID);
     const body = panel?.querySelector?.('[data-shim-control-body]');
     if (!panel || !body) return;
+    // 刷新按钮的行为按当前 tab 走 - overview 重拉 snapshot, logs 重拉日志列表
+    if (shimControlActiveTab === 'logs') {
+      reloadLogs(panel);
+      return;
+    }
     renderControlPanelLoading(body);
     refreshControlPanel(panel);
   }
 
   async function copyControlPanelSnapshot() {
+    if (shimControlActiveTab === 'logs') {
+      const entries = shimControlLogsState.entries;
+      if (!entries.length) {
+        showToast(S('shimControlCopyEmpty', 'No status to copy yet'), 'warning');
+        return;
+      }
+      const text = entries.map(formatLogEntryForCopy).join('\n');
+      await copyTextToClipboard(text, S('shimControlCopied', 'Status copied'));
+      return;
+    }
     const snapshot = shimControlPanelSnapshot;
     if (!snapshot) {
       showToast(S('shimControlCopyEmpty', 'No status to copy yet'), 'warning');
@@ -689,8 +769,6 @@
   }
 
   async function refreshControlPanel(panel) {
-    const body = panel.querySelector('[data-shim-control-body]');
-    if (!body) return;
     // labels 由 /provider/list 响应填充, 这里主动拉一次确保 i18n 是最新的,
     // 否则用户在 dart 改了文案后 JS 端 shimProviderState.labels 仍是旧值。
     // 用 Promise.all 让 labels 跟 snapshot 并行拉,不卡渲染。
@@ -700,7 +778,9 @@
     ]);
     shimControlPanelSnapshot = snapshot;
     if (!document.body.contains(panel)) return;
-    renderControlPanelSnapshot(body, snapshot);
+    // labels 现在已经是最新的, 把 header/sidebar 静态文案跟着重建,
+    // 顺带按当前 active tab 渲染内容区。
+    renderControlPanelChrome(panel);
   }
 
   async function loadControlPanelSnapshot() {
@@ -992,6 +1072,7 @@
     // 主信息: name + model 突出, protocol/weights/strategy 用元数据行带过
     const head = document.createElement('div');
     Object.assign(head.style, {
+      minWidth: '0',
       display: 'flex',
       flexDirection: 'column',
       gap: '4px',
@@ -1126,6 +1207,411 @@
     return wrap;
   }
 
+  // ========== 日志 tab ==========
+
+  // Logs 页面整体: page header + 过滤段 + 列表区
+  function buildLogsPage(panel) {
+    const page = document.createElement('div');
+    Object.assign(page.style, {
+      minHeight: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    });
+
+    page.appendChild(buildLogsPageHeader());
+    page.appendChild(buildLogsFilterRow(panel));
+
+    const listWrap = document.createElement('div');
+    listWrap.setAttribute('data-shim-logs-list', '1');
+    Object.assign(listWrap.style, {
+      flex: '1 1 auto',
+      minHeight: '0',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      padding: '8px 24px 20px',
+    });
+    page.appendChild(listWrap);
+
+    renderLogsListContent(listWrap);
+    return page;
+  }
+
+  function buildLogsPageHeader() {
+    const header = document.createElement('div');
+    Object.assign(header.style, {
+      padding: '22px 24px 14px',
+      flex: '0 0 auto',
+      borderBottom: '1px solid var(--token-border, rgba(255,255,255,0.05))',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: '12px',
+    });
+    const left = document.createElement('div');
+    Object.assign(left.style, {
+      minWidth: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      flex: '1 1 auto',
+    });
+    const title = document.createElement('h2');
+    title.textContent = S('shimControlLogsHeading', 'Runtime logs');
+    Object.assign(title.style, {
+      margin: '0',
+      fontSize: '16px',
+      fontWeight: '600',
+      color: 'var(--token-text-primary, currentColor)',
+      letterSpacing: '0.1px',
+    });
+    const desc = document.createElement('div');
+    desc.textContent = S('shimControlLogsDescription', 'Recent log entries from the Shim backend, useful for diagnosing provider and binding issues.');
+    Object.assign(desc.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      fontSize: '12px',
+      lineHeight: '1.5',
+    });
+    left.appendChild(title);
+    left.appendChild(desc);
+    header.appendChild(left);
+    return header;
+  }
+
+  function buildLogsFilterRow(panel) {
+    const row = document.createElement('div');
+    Object.assign(row.style, {
+      flex: '0 0 auto',
+      padding: '14px 24px 4px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+    });
+
+    const segment = document.createElement('div');
+    Object.assign(segment.style, {
+      display: 'inline-flex',
+      padding: '3px',
+      borderRadius: '8px',
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid var(--token-border, rgba(255,255,255,0.06))',
+      gap: '2px',
+    });
+    const filters = [
+      { key: 'all', label: S('shimControlLogsFilterAll', 'All') },
+      { key: 'info', label: S('shimControlLogsFilterInfo', 'Info') },
+      { key: 'warning', label: S('shimControlLogsFilterWarning', 'Warn') },
+      { key: 'error', label: S('shimControlLogsFilterError', 'Error') },
+    ];
+    for (const f of filters) {
+      segment.appendChild(buildLogsFilterButton(panel, f.key, f.label));
+    }
+
+    const actions = document.createElement('div');
+    Object.assign(actions.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+    });
+    const count = document.createElement('span');
+    count.setAttribute('data-shim-logs-count', '1');
+    count.textContent = `${shimControlLogsState.entries.length} ${S('shimControlLogsCount', 'entries')}`;
+    Object.assign(count.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      fontSize: '12px',
+      fontWeight: '500',
+      fontFeatureSettings: '"tnum"',
+    });
+    actions.appendChild(count);
+    actions.appendChild(buildLogsClearButton(panel));
+
+    row.appendChild(segment);
+    row.appendChild(actions);
+    return row;
+  }
+
+  function buildLogsFilterButton(panel, key, label) {
+    const active = shimControlLogsState.filter === key;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    Object.assign(btn.style, {
+      padding: '5px 12px',
+      border: '0',
+      borderRadius: '6px',
+      background: active ? 'rgba(96,165,250,0.18)' : 'transparent',
+      color: active
+        ? '#bfdbfe'
+        : 'var(--token-text-secondary, rgba(255,255,255,0.62))',
+      cursor: active ? 'default' : 'pointer',
+      fontSize: '12px',
+      fontWeight: '600',
+      letterSpacing: '0.2px',
+      transition: 'background 140ms ease, color 140ms ease',
+    });
+    if (!active) {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(255,255,255,0.06)';
+        btn.style.color = 'var(--token-text-primary, #f8fafc)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.62))';
+      });
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        shimControlLogsState = { ...shimControlLogsState, filter: key };
+        renderActiveTab(panel);
+      });
+    }
+    return btn;
+  }
+
+  function buildLogsClearButton(panel) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = S('shimControlLogsClear', 'Clear');
+    btn.setAttribute('aria-label', S('shimControlLogsClearAria', 'Clear logs'));
+    Object.assign(btn.style, {
+      padding: '5px 10px',
+      border: '1px solid var(--token-border, rgba(255,255,255,0.08))',
+      borderRadius: '6px',
+      background: 'transparent',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.62))',
+      cursor: 'pointer',
+      fontSize: '12px',
+      fontWeight: '600',
+      transition: 'background 140ms ease, color 140ms ease, border-color 140ms ease',
+    });
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'rgba(239,68,68,0.10)';
+      btn.style.borderColor = 'rgba(239,68,68,0.32)';
+      btn.style.color = '#fca5a5';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.borderColor = 'var(--token-border, rgba(255,255,255,0.08))';
+      btn.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.62))';
+    });
+    btn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const res = await callShimRoute('/logs/clear', {}, 1500);
+      if (!res.ok) {
+        showToast(`${S('shimControlLogsClearFailed', 'Clear failed')}: ${res.message || ''}`, 'error');
+        return;
+      }
+      shimControlLogsState = { ...shimControlLogsState, entries: [] };
+      renderActiveTab(panel);
+      showToast(S('shimControlLogsCleared', 'Logs cleared'), 'success');
+    });
+    return btn;
+  }
+
+  // 仅刷新列表区, 不重建 chrome 或 page header
+  function renderLogsListContent(listWrap) {
+    listWrap.innerHTML = '';
+    if (shimControlLogsState.loading) {
+      listWrap.appendChild(buildControlLoadingPanel());
+      return;
+    }
+    if (shimControlLogsState.error) {
+      listWrap.appendChild(buildEmptyState(
+        ICON_LOGS,
+        S('shimControlLogsLoadFailed', 'Failed to load logs'),
+        shimControlLogsState.error,
+      ));
+      return;
+    }
+    const visible = shimControlLogsState.entries.filter(matchesLogFilter);
+    if (!visible.length) {
+      listWrap.appendChild(buildEmptyState(
+        ICON_LOGS,
+        S('shimControlLogsEmpty', 'No logs yet'),
+        S('shimControlLogsDescription', 'Recent log entries from the Shim backend, useful for diagnosing provider and binding issues.'),
+      ));
+      return;
+    }
+    const list = document.createElement('div');
+    Object.assign(list.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '6px',
+    });
+    for (const entry of visible) {
+      list.appendChild(buildLogEntryCard(entry));
+    }
+    listWrap.appendChild(list);
+  }
+
+  function matchesLogFilter(entry) {
+    const f = shimControlLogsState.filter;
+    if (f === 'all') return true;
+    if (f === 'info') return entry.level === 'info' || entry.level === 'debug';
+    if (f === 'warning') return entry.level === 'warning';
+    if (f === 'error') return entry.level === 'error';
+    return true;
+  }
+
+  function buildLogEntryCard(entry) {
+    const card = document.createElement('div');
+    Object.assign(card.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '6px',
+      padding: '10px 12px',
+      borderRadius: '8px',
+      background: 'rgba(255,255,255,0.022)',
+      border: '1px solid var(--token-border, rgba(255,255,255,0.05))',
+    });
+    const top = document.createElement('div');
+    Object.assign(top.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      minWidth: '0',
+    });
+    top.appendChild(buildLogLevelBadge(entry.level));
+    const source = document.createElement('span');
+    source.textContent = entry.source || '';
+    source.title = entry.source || '';
+    Object.assign(source.style, {
+      flex: '1 1 auto',
+      minWidth: '0',
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '12.5px',
+      fontWeight: '700',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
+    const time = document.createElement('span');
+    time.textContent = formatLogTime(entry.timestamp);
+    Object.assign(time.style, {
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      fontSize: '11px',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontFeatureSettings: '"tnum"',
+      flex: '0 0 auto',
+    });
+    top.appendChild(source);
+    top.appendChild(time);
+    card.appendChild(top);
+
+    const message = document.createElement('div');
+    message.textContent = entry.message || '';
+    Object.assign(message.style, {
+      color: 'var(--token-text-primary, currentColor)',
+      fontSize: '13px',
+      lineHeight: '1.45',
+      wordBreak: 'break-word',
+      whiteSpace: 'pre-wrap',
+    });
+    card.appendChild(message);
+
+    if (entry.details) {
+      const details = document.createElement('div');
+      details.textContent = entry.details;
+      Object.assign(details.style, {
+        color: 'var(--token-text-secondary, rgba(255,255,255,0.58))',
+        fontSize: '12px',
+        lineHeight: '1.5',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        background: 'rgba(0,0,0,0.18)',
+        borderRadius: '6px',
+        padding: '6px 8px',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        maxHeight: '160px',
+        overflowY: 'auto',
+      });
+      card.appendChild(details);
+    }
+    return card;
+  }
+
+  function buildLogLevelBadge(level) {
+    const meta = logLevelMeta(level);
+    const badge = document.createElement('span');
+    badge.textContent = meta.label;
+    Object.assign(badge.style, {
+      flex: '0 0 auto',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2px 8px',
+      borderRadius: '999px',
+      background: meta.background,
+      color: meta.color,
+      fontSize: '10px',
+      fontWeight: '800',
+      letterSpacing: '0.4px',
+      border: `1px solid ${meta.border}`,
+    });
+    return badge;
+  }
+
+  function logLevelMeta(level) {
+    if (level === 'error') {
+      return { label: 'ERROR', color: '#fca5a5', background: 'rgba(239,68,68,0.16)', border: 'rgba(239,68,68,0.36)' };
+    }
+    if (level === 'warning') {
+      return { label: 'WARN', color: '#fcd34d', background: 'rgba(245,158,11,0.16)', border: 'rgba(245,158,11,0.36)' };
+    }
+    if (level === 'debug') {
+      return { label: 'DEBUG', color: 'rgba(255,255,255,0.62)', background: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.10)' };
+    }
+    return { label: 'INFO', color: '#93c5fd', background: 'rgba(96,165,250,0.16)', border: 'rgba(96,165,250,0.36)' };
+  }
+
+  function formatLogTime(iso) {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return iso;
+    const pad = (n, w = 2) => String(n).padStart(w, '0');
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+  }
+
+  function formatLogEntryForCopy(entry) {
+    const lines = [`${formatLogTime(entry.timestamp)} ${logLevelMeta(entry.level).label} ${entry.source || ''} - ${entry.message || ''}`];
+    if (entry.details) lines.push(entry.details);
+    return lines.join('\n');
+  }
+
+  async function reloadLogs(panel) {
+    shimControlLogsState = { ...shimControlLogsState, loading: true, error: null };
+    const listWrap = panel.querySelector('[data-shim-logs-list]');
+    if (listWrap) renderLogsListContent(listWrap);
+
+    const res = await callShimRoute('/logs/list', {}, 2000);
+    if (!document.body.contains(panel)) return;
+    if (!res.ok) {
+      shimControlLogsState = {
+        ...shimControlLogsState,
+        loading: false,
+        error: res.message || S('shimControlLogsLoadFailed', 'Failed to load logs'),
+      };
+    } else {
+      const entries = Array.isArray(res.data.entries) ? res.data.entries : [];
+      shimControlLogsState = {
+        ...shimControlLogsState,
+        loading: false,
+        error: null,
+        entries,
+      };
+    }
+    // 列表区 + 计数都要更新
+    const list2 = panel.querySelector('[data-shim-logs-list]');
+    if (list2) renderLogsListContent(list2);
+    const countEl = panel.querySelector('[data-shim-logs-count]');
+    if (countEl) {
+      countEl.textContent = `${shimControlLogsState.entries.length} ${S('shimControlLogsCount', 'entries')}`;
+    }
+  }
+
   function controlPanelViewModel(snapshot) {
     const providerData = snapshot.provider.data || {};
     const providerLabel = snapshot.provider.ok
@@ -1233,14 +1719,14 @@
     return section;
   }
 
-  // 一行卡片式的映射: codex 标题 / 箭头 / claude 标题。
-  // 当前对话所在行用蓝色描边强调。
+  // 一行卡片式的映射: codex 标题 / 箭头 / claude 标题 / hover 时出现的解绑按钮。
+  // 当前对话所在行用蓝色描边强调。解绑按钮平时隐藏(opacity:0), hover 整行才浮现, 避免视觉噪音。
   function buildBindingRow(item, currentThreadId) {
     const row = document.createElement('div');
     const current = item.codexThreadId && item.codexThreadId === currentThreadId;
     Object.assign(row.style, {
       display: 'grid',
-      gridTemplateColumns: 'minmax(0, 1fr) 18px minmax(0, 1fr)',
+      gridTemplateColumns: 'minmax(0, 1fr) 18px minmax(0, 1fr) 24px',
       alignItems: 'center',
       gap: '10px',
       padding: '10px 12px',
@@ -1249,14 +1735,6 @@
       border: `1px solid ${current ? 'rgba(96,165,250,0.30)' : 'var(--token-border, rgba(255,255,255,0.05))'}`,
       transition: 'background 140ms ease, border-color 140ms ease',
     });
-    if (!current) {
-      row.addEventListener('mouseenter', () => {
-        row.style.background = 'rgba(255,255,255,0.038)';
-      });
-      row.addEventListener('mouseleave', () => {
-        row.style.background = 'rgba(255,255,255,0.018)';
-      });
-    }
     row.appendChild(buildRelationText(item.source || ''));
     const arrow = document.createElement('span');
     arrow.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -1268,7 +1746,100 @@
     });
     row.appendChild(arrow);
     row.appendChild(buildRelationText(item.target || ''));
+
+    const unbindBtn = buildBindingUnbindButton(item);
+    row.appendChild(unbindBtn);
+
+    // hover 整行 → 解绑按钮浮现; 非当前行还顺带换底色
+    row.addEventListener('mouseenter', () => {
+      if (!current) row.style.background = 'rgba(255,255,255,0.038)';
+      unbindBtn.style.opacity = '1';
+    });
+    row.addEventListener('mouseleave', () => {
+      if (!current) row.style.background = 'rgba(255,255,255,0.018)';
+      if (unbindBtn.dataset.shimBusy !== '1') unbindBtn.style.opacity = '0';
+    });
     return row;
+  }
+
+  function buildBindingUnbindButton(item) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', S('shimControlBindingUnbindAria', 'Remove this mapping'));
+    btn.setAttribute('title', S('shimControlBindingUnbind', 'Unbind'));
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    Object.assign(btn.style, {
+      width: '22px',
+      height: '22px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '0',
+      borderRadius: '5px',
+      background: 'transparent',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.5))',
+      cursor: 'pointer',
+      opacity: '0',
+      transition: 'opacity 140ms ease, background 140ms ease, color 140ms ease',
+    });
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'rgba(239,68,68,0.16)';
+      btn.style.color = '#fca5a5';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.5))';
+    });
+    btn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (btn.dataset.shimBusy === '1') return;
+      btn.dataset.shimBusy = '1';
+      btn.style.opacity = '1';
+      await unbindMappingFromControlPanel(item);
+      btn.dataset.shimBusy = '0';
+    });
+    return btn;
+  }
+
+  // 解绑一条 binding, 直接更新本地 snapshot 并刷新 overview 页, 不需要往返一次 list
+  async function unbindMappingFromControlPanel(item) {
+    const codexThreadId = item && item.codexThreadId;
+    if (!codexThreadId) {
+      showToast(S('shimControlBindingUnbindFailed', 'Unbind failed'), 'error');
+      return;
+    }
+    const res = await callShimRoute('/claude-bridge/unbind', { codexThreadId }, 2000);
+    if (!res.ok) {
+      showToast(`${S('shimControlBindingUnbindFailed', 'Unbind failed')}: ${res.message || ''}`, 'error');
+      return;
+    }
+    // 同步给侧栏 chip(如果当前 codex thread 就是被解绑的 thread, chip 也要变回未绑定)
+    if (typeof applyClaudeBridgeStateForThread === 'function') {
+      try {
+        applyClaudeBridgeStateForThread(codexThreadId, res.data || { bound: false });
+      } catch (_) {}
+    }
+    // 从内存 snapshot 里删掉这一项, 重渲染 overview, 不必再走一次 /claude-bridge/list
+    if (shimControlPanelSnapshot && shimControlPanelSnapshot.claude) {
+      const claude = shimControlPanelSnapshot.claude;
+      const nextDetails = (claude.details || []).filter((d) => d.codexThreadId !== codexThreadId);
+      shimControlPanelSnapshot = {
+        ...shimControlPanelSnapshot,
+        claude: {
+          ...claude,
+          details: nextDetails,
+          count: nextDetails.length,
+          tone: nextDetails.length ? claude.tone : 'muted',
+        },
+      };
+      const panel = document.getElementById(POPOVER_ID);
+      if (panel && shimControlActiveTab === 'overview') {
+        const body = panel.querySelector('[data-shim-control-body]');
+        if (body) renderControlPanelSnapshot(body, shimControlPanelSnapshot);
+      }
+    }
+    showToast(S('shimControlBindingUnboundToast', 'Mapping removed'), 'success');
   }
 
   // 没选中 Codex 对话时整张卡彻底不渲染 — 返回 null, 调用方负责跳过。
@@ -1411,7 +1982,146 @@
       card.appendChild(mapped);
     }
 
+    card.appendChild(buildCurrentThreadActions(currentId, thread, !!currentBinding));
     return card;
+  }
+
+  // 当前对话卡底部的操作条: 导出 MD / 导出原始 / 解除映射(仅已绑定) / 删除对话
+  function buildCurrentThreadActions(threadId, thread, hasBinding) {
+    const row = document.createElement('div');
+    Object.assign(row.style, {
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: '6px',
+      paddingTop: '4px',
+      borderTop: '1px solid var(--token-border, rgba(255,255,255,0.06))',
+      marginTop: '4px',
+    });
+    const ICON_EXPORT_MD = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2"/><path d="M10 2.5V6h3" stroke="currentColor" stroke-width="1.2"/></svg>';
+    const ICON_EXPORT_RAW = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2h6l2 2v10H4z" stroke="currentColor" stroke-width="1.2"/><path d="M6 6h4M6 9h4M6 12h3" stroke="currentColor" stroke-width="1.2"/></svg>';
+    const ICON_EXPORT_HTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2"/><path d="M10 2.5V6h3" stroke="currentColor" stroke-width="1.2"/><path d="M5 10l-1.2 1.2L5 12.4M11 10l1.2 1.2L11 12.4M8.5 9.6l-1 3.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_UNBIND = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 8a3 3 0 1 0 0 0M11 8a3 3 0 1 0 0 0" stroke="currentColor" stroke-width="1.3"/><path d="M3 13l10-10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+    const ICON_DELETE = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 4h10M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M4.5 4l.7 9a1 1 0 0 0 1 .9h3.6a1 1 0 0 0 1-.9l.7-9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+    row.appendChild(buildThreadActionButton(ICON_EXPORT_MD, S('shimControlExportMarkdown', 'Export as Markdown'), 'neutral', () =>
+      exportThreadById(threadId, 'markdown'),
+    ));
+    row.appendChild(buildThreadActionButton(ICON_EXPORT_RAW, S('shimControlExportRaw', 'Export raw data'), 'neutral', () =>
+      exportThreadById(threadId, 'raws'),
+    ));
+    row.appendChild(buildThreadActionButton(ICON_EXPORT_HTML, S('shimControlExportHtml', 'Export HTML'), 'neutral', () =>
+      exportThreadById(threadId, 'html'),
+    ));
+    if (hasBinding) {
+      row.appendChild(buildThreadActionButton(ICON_UNBIND, S('shimControlUnbindCurrent', 'Remove mapping'), 'neutral', () =>
+        unbindMappingFromControlPanel({ codexThreadId: threadId }),
+      ));
+    }
+    row.appendChild(buildThreadActionButton(ICON_DELETE, S('shimControlDeleteThread', 'Delete thread'), 'danger', () =>
+      deleteThreadFromControlPanel(threadId, thread.label || ''),
+    ));
+    return row;
+  }
+
+  function buildThreadActionButton(iconHtml, label, kind, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('title', label);
+    Object.assign(btn.style, {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      height: '26px',
+      padding: '0 10px',
+      border: '1px solid var(--token-border, rgba(255,255,255,0.08))',
+      borderRadius: '6px',
+      background: 'transparent',
+      color: 'var(--token-text-secondary, rgba(255,255,255,0.66))',
+      cursor: 'pointer',
+      fontSize: '11.5px',
+      fontWeight: '600',
+      transition: 'background 140ms ease, color 140ms ease, border-color 140ms ease',
+    });
+    const icon = document.createElement('span');
+    icon.innerHTML = iconHtml;
+    Object.assign(icon.style, { display: 'inline-flex', alignItems: 'center' });
+    const text = document.createElement('span');
+    text.textContent = label;
+    btn.appendChild(icon);
+    btn.appendChild(text);
+    const hoverBg = kind === 'danger' ? 'rgba(239,68,68,0.12)' : 'rgba(96,165,250,0.10)';
+    const hoverBorder = kind === 'danger' ? 'rgba(239,68,68,0.34)' : 'rgba(96,165,250,0.28)';
+    const hoverColor = kind === 'danger' ? '#fca5a5' : '#bfdbfe';
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = hoverBg;
+      btn.style.borderColor = hoverBorder;
+      btn.style.color = hoverColor;
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.borderColor = 'var(--token-border, rgba(255,255,255,0.08))';
+      btn.style.color = 'var(--token-text-secondary, rgba(255,255,255,0.66))';
+    });
+    btn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await onClick();
+    });
+    return btn;
+  }
+
+  // 控制面板调用版的 export, 直接给 id, 不依赖 sidebar DOM row
+  async function exportThreadById(id, format) {
+    if (!id) {
+      showToast(S('deleteSessionIdMissing', 'Session id not found'), 'error');
+      return;
+    }
+    try {
+      const res = await window.shim('/session/export', { id, format });
+      if (res?.code !== 0) {
+        showToast(`${S('threadExportFailed', 'Export failed')}: ${res?.message || S('unknownError', 'Unknown error')}`, 'error');
+        return;
+      }
+      if (res.data?.cancelled) return;
+      showToast(S('threadExportedToast', 'Exported'), 'success');
+    } catch (err) {
+      showToast(`${S('threadExportFailed', 'Export failed')}: ${err?.message || err}`, 'error');
+    }
+  }
+
+  // 控制面板调用版的 delete, 走确认弹窗, 成功后让用户重新选择 (清掉 currentThread)
+  async function deleteThreadFromControlPanel(id, title) {
+    if (!id) {
+      showToast(S('deleteSessionIdMissing', 'Session id not found'), 'error');
+      return;
+    }
+    const ok = await showDeleteConfirm(title || S('deleteDefaultTitle', 'this thread'));
+    if (!ok) return;
+    try {
+      const res = await window.shim('/session/delete', { id });
+      if (res?.code !== 0) {
+        showToast(`${S('deleteFailed', 'Delete failed')}: ${res?.message || S('unknownError', 'Unknown error')}`, 'error');
+        return;
+      }
+      // 同步: codex 侧栏 row 也手动移除, 让 UI 立刻反应
+      const row = document.querySelector(`[data-app-action-sidebar-thread-id$=":${id}"], [data-app-action-sidebar-thread-id="${id}"]`);
+      const container = row && (row.closest('[role="listitem"]') || row.closest('.after\\:block') || row);
+      container?.remove();
+      // 删除后控制面板 snapshot 里 currentThread 还指着这条, 重拉一次
+      const panel = document.getElementById(POPOVER_ID);
+      if (panel) {
+        const snapshot = await loadControlPanelSnapshot();
+        shimControlPanelSnapshot = snapshot;
+        if (document.body.contains(panel) && shimControlActiveTab === 'overview') {
+          const body = panel.querySelector('[data-shim-control-body]');
+          if (body) renderControlPanelSnapshot(body, snapshot);
+        }
+      }
+      showToast(S('deleteSuccess', 'Deleted'), 'success');
+    } catch (err) {
+      showToast(`${S('deleteFailed', 'Delete failed')}: ${err?.message || err}`, 'error');
+    }
   }
 
   function buildCopyIdButton(currentId) {
@@ -1826,6 +2536,7 @@
 
     const ICON_MD = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2"/><path d="M10 2.5V6h3" stroke="currentColor" stroke-width="1.2"/></svg>`;
     const ICON_RAW = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 2h6l2 2v10H4z" stroke="currentColor" stroke-width="1.2"/><path d="M6 6h4M6 9h4M6 12h3" stroke="currentColor" stroke-width="1.2"/></svg>`;
+    const ICON_HTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2"/><path d="M10 2.5V6h3" stroke="currentColor" stroke-width="1.2"/><path d="M5 10l-1.2 1.2L5 12.4M11 10l1.2 1.2L11 12.4M8.5 9.6l-1 3.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const ICON_DEL = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M4.5 4l.7 9a1 1 0 0 0 1 .9h3.6a1 1 0 0 0 1-.9l.7-9" stroke="currentColor" stroke-width="1.2"/></svg>`;
 
     addItem({
@@ -1836,7 +2547,12 @@
     addItem({
       label: S('threadExportRaw', 'Export raw data'),
       icon: ICON_RAW,
-      onClick: () => exportThread(row, 'raw'),
+      onClick: () => exportThread(row, 'raws'),
+    });
+    addItem({
+      label: S('threadExportHtml', 'Export as HTML'),
+      icon: ICON_HTML,
+      onClick: () => exportThread(row, 'html'),
     });
     // 分隔线
     const sep = document.createElement('div');
@@ -4863,6 +5579,252 @@
       subtree: true,
     });
     __t('UI scheduler installed');
+  }
+
+  // ========== Codex 项目级 radix 菜单 hook: 注入"导出为 zip"项 ==========
+  //
+  // Codex 项目折叠头右侧的"⋯"按钮打开一个 radix dropdown ([data-radix-menu-content]),
+  // 默认有"置顶项目/在资源管理器中打开/重命名项目/归档对话/移除"等项。我们在
+  // 第一项前面 prepend 一个"导出为"项, hover 弹出 markdown/raw/html ·zip 三个子项。
+  //
+  // 之所以走 MutationObserver: codex 用 portal 把菜单挂到 body 末尾, 每次开关都重建,
+  // 没法一次性挂 listener。我们监听菜单出现, 然后基于 aria-labelledby 反查 trigger 找 cwd。
+  installCodexProjectMenuHook();
+
+  function installCodexProjectMenuHook() {
+    if (window.__shimCodexProjectMenuHookInstalled) return;
+    window.__shimCodexProjectMenuHookInstalled = true;
+    const SHIM_INJECTED_FLAG = 'data-shim-export-injected';
+
+    const observer = new MutationObserver((records) => {
+      for (const rec of records) {
+        for (const node of rec.addedNodes) {
+          if (!(node instanceof HTMLElement)) continue;
+          // 菜单可能就是 added node, 也可能在它的子树里
+          const menus = node.matches('[data-radix-menu-content]')
+            ? [node]
+            : Array.from(node.querySelectorAll('[data-radix-menu-content]'));
+          for (const menu of menus) {
+            if (menu.getAttribute(SHIM_INJECTED_FLAG) === '1') continue;
+            tryInjectProjectExportItem(menu);
+          }
+        }
+      }
+    });
+    observer.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+
+    function tryInjectProjectExportItem(menu) {
+      // 用 aria-labelledby 反查 trigger
+      const triggerId = menu.getAttribute('aria-labelledby');
+      if (!triggerId) return;
+      const trigger = document.getElementById(triggerId);
+      if (!trigger) return;
+      // trigger 外面必须包着一个项目 row 才认
+      const projectRow = trigger.closest('[data-app-action-sidebar-project-row]');
+      if (!projectRow) return;
+      const cwd = projectRow.getAttribute('data-app-action-sidebar-project-id') || '';
+      const label = projectRow.getAttribute('data-app-action-sidebar-project-label') || '';
+
+      menu.setAttribute(SHIM_INJECTED_FLAG, '1');
+
+      // 找菜单里现有任意 menuitem 当样式模板
+      const sampleItem = menu.querySelector('[role="menuitem"]');
+      const item = buildProjectExportMenuItem(cwd, label, sampleItem);
+      menu.insertBefore(item, menu.firstChild);
+    }
+  }
+
+  // 项目菜单第一项: "导出为" + 右箭头, hover 弹子菜单(我们自己的浮层, 不嵌套 radix)
+  function buildProjectExportMenuItem(cwd, label, sampleItem) {
+    const item = document.createElement('div');
+    item.setAttribute('role', 'menuitem');
+    item.setAttribute('tabindex', '-1');
+    item.setAttribute('data-orientation', 'vertical');
+    if (sampleItem) {
+      item.className = sampleItem.className;
+    } else {
+      // fallback: 大致 cosplay radix item 的样式
+      item.className =
+        'no-drag text-token-foreground outline-hidden rounded-lg px-[var(--padding-row-x)] py-[var(--padding-row-y)] text-sm group hover:bg-token-list-hover-background focus:bg-token-list-hover-background cursor-interaction flex flex-col';
+    }
+
+    const row = document.createElement('div');
+    row.className = 'flex w-full items-center gap-1.5';
+    const icon = document.createElement('span');
+    icon.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;opacity:0.75;';
+    icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 2.5h7l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.2"/><path d="M10 2.5V6h3" stroke="currentColor" stroke-width="1.2"/><path d="M5 9h6M5 11.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+    const text = document.createElement('span');
+    text.className = 'flex-1 min-w-0 truncate';
+    text.textContent = S('projectMenuExportAs', 'Export as');
+    const chevron = document.createElement('span');
+    chevron.style.cssText = 'opacity:0.55;font-size:11px;';
+    chevron.textContent = '▸';
+    row.appendChild(icon);
+    row.appendChild(text);
+    row.appendChild(chevron);
+    item.appendChild(row);
+
+    let submenu = null;
+    let hideTimer = null;
+
+    const openSubmenu = () => {
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      if (submenu) return;
+      submenu = buildProjectExportSubmenu(cwd, label, item, () => {
+        // 子菜单要求自己关闭(点完了之类)
+        closeSubmenu(true);
+      });
+      document.body.appendChild(submenu);
+      positionAtRightOf(submenu, item);
+    };
+    const scheduleClose = () => {
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => closeSubmenu(false), 200);
+    };
+    const closeSubmenu = (immediate) => {
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      if (!submenu) return;
+      submenu.remove();
+      submenu = null;
+    };
+
+    item.addEventListener('mouseenter', openSubmenu);
+    item.addEventListener('mouseleave', scheduleClose);
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openSubmenu();
+    });
+    // 父 radix 菜单被关闭时, 我们的子菜单也跟着消失
+    const parentMenu = item.closest('[data-radix-menu-content]');
+    if (parentMenu) {
+      const mo = new MutationObserver(() => {
+        if (!document.body.contains(parentMenu)) {
+          closeSubmenu(true);
+          mo.disconnect();
+        }
+      });
+      mo.observe(document.body, { childList: true });
+    }
+    return item;
+  }
+
+  function buildProjectExportSubmenu(cwd, label, anchor, onClose) {
+    const menu = document.createElement('div');
+    menu.className =
+      'bg-token-dropdown-background/95 text-token-foreground ring-token-border shadow-xl-spread backdrop-blur-sm';
+    Object.assign(menu.style, {
+      position: 'fixed',
+      zIndex: '2147483647',
+      minWidth: '200px',
+      padding: '4px',
+      borderRadius: '10px',
+      outline: '0.5px solid var(--token-border, rgba(255,255,255,0.08))',
+      boxShadow: '0 16px 42px rgba(0, 0, 0, 0.42)',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '13px',
+    });
+
+    // 鼠标在 anchor 与 menu 之间移动时不要意外关闭 — 我们把 menu 也注册 enter
+    menu.addEventListener('mouseenter', () => {
+      // 阻断 anchor 的 leave-close 计时
+      const event = new Event('mouseenter');
+      anchor.dispatchEvent(event);
+    });
+    menu.addEventListener('mouseleave', () => {
+      const event = new Event('mouseleave');
+      anchor.dispatchEvent(event);
+    });
+
+    const formats = [
+      { key: 'markdown', label: S('projectMenuExportMarkdownZip', 'Markdown · zip') },
+      { key: 'raws', label: S('projectMenuExportRawZip', 'Raw data · zip') },
+      { key: 'html', label: S('projectMenuExportHtmlZip', 'HTML · zip') },
+    ];
+    for (const f of formats) {
+      menu.appendChild(buildProjectExportSubmenuItem(f.label, async () => {
+        onClose && onClose();
+        // 关闭父 radix 菜单: 找一个空白点击模拟一下(radix 自己有 outside-click 监听)
+        document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        await runProjectExportBundle(cwd, label, f.key);
+      }));
+    }
+    return menu;
+  }
+
+  function buildProjectExportSubmenuItem(label, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    Object.assign(btn.style, {
+      display: 'flex',
+      alignItems: 'center',
+      width: '100%',
+      padding: '8px 10px',
+      border: '0',
+      borderRadius: '6px',
+      background: 'transparent',
+      color: 'var(--token-text-primary, currentColor)',
+      cursor: 'pointer',
+      fontSize: '13px',
+      textAlign: 'left',
+      transition: 'background 140ms ease',
+    });
+    btn.textContent = label;
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'rgba(255,255,255,0.06)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+
+  function positionAtRightOf(submenu, anchor) {
+    const r = anchor.getBoundingClientRect();
+    const sr = submenu.getBoundingClientRect();
+    let left = r.right + 4;
+    let top = r.top;
+    if (left + sr.width > window.innerWidth - 8) {
+      left = r.left - sr.width - 4;
+    }
+    if (top + sr.height > window.innerHeight - 8) {
+      top = Math.max(8, window.innerHeight - sr.height - 8);
+    }
+    submenu.style.left = `${Math.max(8, left)}px`;
+    submenu.style.top = `${Math.max(8, top)}px`;
+  }
+
+  async function runProjectExportBundle(cwd, label, format) {
+    if (!cwd) {
+      showToast(S('projectMenuExportMissingCwd', 'Project path not detected'), 'error');
+      return;
+    }
+    showToast(S('projectMenuExportRunning', 'Packing export…'), 'info');
+    try {
+      const res = await window.shim('/session/export-bundle', { cwd, format });
+      if (!res || res.code !== 0) {
+        const msg = res && res.message ? res.message : '';
+        showToast(`${S('projectMenuExportFailed', 'Export failed')}: ${msg}`, 'error');
+        return;
+      }
+      if (res.data && res.data.cancelled) return;
+      if (res.data && res.data.reason === 'empty') {
+        showToast(S('projectMenuExportEmpty', 'This project has no conversations to export'), 'warning');
+        return;
+      }
+      const count = (res.data && res.data.count) || 0;
+      showToast(`${S('projectMenuExportDone', 'Exported')} · ${count}`, 'success');
+    } catch (err) {
+      showToast(`${S('projectMenuExportFailed', 'Export failed')}: ${err && err.message ? err.message : err}`, 'error');
+    }
   }
 
   installUiScheduler();

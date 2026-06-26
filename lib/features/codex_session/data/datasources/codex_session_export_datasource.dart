@@ -54,6 +54,58 @@ class CodexSessionExportDatasource {
     });
   }
 
+  /// 列指定 cwd 下所有 thread (id + title + updated_at_ms), 按更新时间倒序。
+  /// 用于"按项目导出 zip"。
+  ///
+  /// Windows 兼容: codex 在 sqlite 里写 cwd 时大多会带 `\\?\` 长路径前缀,
+  /// 而 codex sidebar DOM 上的 `data-app-action-sidebar-project-id` 不带前缀,
+  /// 所以这里两种形式都查 (传入带前缀也兼容)。
+  Future<List<Map<String, dynamic>>> listThreadsByCwd({
+    required String cwd,
+  }) async {
+    final dbPath = _codexDbPath();
+    if (!File(dbPath).existsSync()) {
+      throw StateError('Codex database not found: $dbPath');
+    }
+    final variants = _cwdMatchVariants(cwd);
+    final placeholders = List.filled(variants.length, '?').join(', ');
+    final db = sqlite3.open(dbPath, mode: OpenMode.readOnly);
+    try {
+      final rows = db.select(
+        '''
+        SELECT id, title, updated_at_ms
+        FROM threads
+        WHERE cwd IN ($placeholders)
+        ORDER BY updated_at_ms DESC
+        ''',
+        variants,
+      );
+      return [
+        for (final row in rows)
+          {
+            'id': row['id'] ?? '',
+            'title': row['title'] ?? '',
+            'updatedAtMs': row['updated_at_ms'] ?? 0,
+          },
+      ];
+    } finally {
+      db.dispose();
+    }
+  }
+
+  /// Windows 长路径前缀 (`\\?\`) 双向兼容: 调用方给啥都行。
+  List<String> _cwdMatchVariants(String cwd) {
+    if (cwd.isEmpty) return const [];
+    const prefix = r'\\?\';
+    final variants = <String>{cwd};
+    if (cwd.startsWith(prefix)) {
+      variants.add(cwd.substring(prefix.length));
+    } else {
+      variants.add('$prefix$cwd');
+    }
+    return variants.toList();
+  }
+
   Future<List<Map<String, dynamic>>> _parseRollout(String path) async {
     if (path.isEmpty) return [];
     final file = File(path);

@@ -42,6 +42,10 @@ class CodexSessionExportRepositoryImpl implements CodexSessionExportRepository {
         final md = formatter.renderMarkdown(detail);
         await File(outputPath).writeAsString(md);
         return;
+      case 'html':
+        final html = formatter.renderHtml(detail);
+        await File(outputPath).writeAsString(html);
+        return;
       default:
         throw ArgumentError('unsupported format: $format');
     }

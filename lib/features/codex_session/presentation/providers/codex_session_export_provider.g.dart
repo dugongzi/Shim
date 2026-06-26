@@ -139,7 +139,11 @@ final class CodexThreadDetailFamily extends $Family
 ///
 /// /session/export — 弹系统保存对话框 → 选完路径后真正写文件。
 ///   payload.id     thread id (required)
-///   payload.format 'markdown' | 'raws' (required)
+///   payload.format 'markdown' | 'raws' | 'html' (required)
+///
+/// /session/export-bundle — 按 cwd (项目) 批量导出, 打成 zip。
+///   payload.cwd    项目工作目录 (required)
+///   payload.format 'markdown' | 'raws' | 'html' (required)
 
 @ProviderFor(codexSessionExportRouteRegistration)
 const codexSessionExportRouteRegistrationProvider =
@@ -149,7 +153,11 @@ const codexSessionExportRouteRegistrationProvider =
 ///
 /// /session/export — 弹系统保存对话框 → 选完路径后真正写文件。
 ///   payload.id     thread id (required)
-///   payload.format 'markdown' | 'raws' (required)
+///   payload.format 'markdown' | 'raws' | 'html' (required)
+///
+/// /session/export-bundle — 按 cwd (项目) 批量导出, 打成 zip。
+///   payload.cwd    项目工作目录 (required)
+///   payload.format 'markdown' | 'raws' | 'html' (required)
 
 final class CodexSessionExportRouteRegistrationProvider
     extends $FunctionalProvider<bool, bool, bool>
@@ -158,7 +166,11 @@ final class CodexSessionExportRouteRegistrationProvider
   ///
   /// /session/export — 弹系统保存对话框 → 选完路径后真正写文件。
   ///   payload.id     thread id (required)
-  ///   payload.format 'markdown' | 'raws' (required)
+  ///   payload.format 'markdown' | 'raws' | 'html' (required)
+  ///
+  /// /session/export-bundle — 按 cwd (项目) 批量导出, 打成 zip。
+  ///   payload.cwd    项目工作目录 (required)
+  ///   payload.format 'markdown' | 'raws' | 'html' (required)
   const CodexSessionExportRouteRegistrationProvider._()
     : super(
         from: null,
@@ -194,4 +206,4 @@ final class CodexSessionExportRouteRegistrationProvider
 }
 
 String _$codexSessionExportRouteRegistrationHash() =>
-    r'694950119bd859833f6557102b983c312a2c6438';
+    r'113e288e9666b2fbe693e1ffb5a5e42a75eee75c';
