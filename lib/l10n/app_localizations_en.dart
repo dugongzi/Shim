@@ -573,6 +573,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get threadMessageToolResult => 'Tool result';
 
   @override
+  String get threadMessageGeneric => 'Message';
+
+  @override
   String get expand => 'Expand';
 
   @override

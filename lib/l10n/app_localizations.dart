@@ -1154,6 +1154,12 @@ abstract class AppLocalizations {
   /// **'工具结果'**
   String get threadMessageToolResult;
 
+  /// No description provided for @threadMessageGeneric.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息'**
+  String get threadMessageGeneric;
+
   /// No description provided for @expand.
   ///
   /// In zh, this message translates to:

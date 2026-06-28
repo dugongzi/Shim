@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shim/core/extensions/context_extensions.dart';
-import 'package:shim/features/claude_session/domain/models/claude_thread_message.dart';
 import 'package:shim/common/widgets/collapsible_text.dart';
+import 'package:shim/core/extensions/context_extensions.dart';
+import 'package:shim/features/codex_session/domain/models/codex_thread_message.dart';
 
 /// 单条消息气泡:文本 / 工具调用 / 工具结果 三态。
 class ThreadMessageTile extends StatelessWidget {
   const ThreadMessageTile({super.key, required this.message});
 
-  final ClaudeThreadMessage message;
+  final CodexThreadMessage message;
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +18,7 @@ class ThreadMessageTile extends StatelessWidget {
     switch (message.kind) {
       case 'tool_use':
         bg = colorScheme.tertiaryContainer.withValues(alpha: 0.30);
-        label = message.toolName.isEmpty
-            ? l10n.threadMessageToolCall
-            : '${l10n.threadMessageToolCall} · ${message.toolName}';
+        label = l10n.threadMessageToolCall;
         break;
       case 'tool_result':
         bg = colorScheme.surfaceContainerHighest.withValues(alpha: 0.55);
@@ -30,9 +28,14 @@ class ThreadMessageTile extends StatelessWidget {
         if (message.role == 'user') {
           bg = colorScheme.primaryContainer.withValues(alpha: 0.32);
           label = l10n.threadMessageUser;
-        } else {
+        } else if (message.role == 'assistant') {
           bg = colorScheme.secondaryContainer.withValues(alpha: 0.28);
           label = l10n.threadMessageAssistant;
+        } else {
+          bg = colorScheme.surfaceContainerHighest.withValues(alpha: 0.40);
+          label = message.role.isEmpty
+              ? l10n.threadMessageGeneric
+              : message.role;
         }
     }
 

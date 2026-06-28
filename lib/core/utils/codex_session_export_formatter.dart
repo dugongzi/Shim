@@ -1,3 +1,4 @@
+import 'package:path/path.dart' as p;
 import 'package:shim/features/codex_session/domain/models/codex_thread_detail.dart';
 import 'package:shim/features/codex_session/domain/models/codex_thread_message.dart';
 
@@ -189,4 +190,65 @@ details summary { padding: 6px 12px; cursor: pointer; color: var(--fg-muted); fo
 details[open] summary { color: var(--fg); }
 details pre.code { margin: 0; border-radius: 0 0 6px 6px; }
 ''';
+}
+
+/// 文件名安全化:替换非法字符,截断到 80 字符。
+String safeFileBase(String name) {
+  final cleaned = name.replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), '_').trim();
+  if (cleaned.isEmpty) return 'untitled';
+  return cleaned.length > 80 ? cleaned.substring(0, 80) : cleaned;
+}
+
+/// zip 内同名时附加 `-2/-3/...` 后缀去重。
+String uniqueName(Set<String> used, String name) {
+  if (used.add(name)) return name;
+  final dot = name.lastIndexOf('.');
+  final stem = dot >= 0 ? name.substring(0, dot) : name;
+  final ext = dot >= 0 ? name.substring(dot) : '';
+  var i = 2;
+  while (true) {
+    final candidate = '$stem-$i$ext';
+    if (used.add(candidate)) return candidate;
+    i += 1;
+  }
+}
+
+/// 按项目导出时的默认 zip 文件名:`<cwd 末段>-<format>.zip`。
+String defaultBundleName(String cwd, String format) {
+  final base = safeFileBase(p.basename(cwd));
+  return '$base-${format == 'raws' ? 'raw' : format}.zip';
+}
+
+/// 单条导出时的默认文件名:`<title>.<ext>`。
+String defaultFileName(String title, String format) {
+  final safe = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+  return '$safe.${extOfFormat(format)}';
+}
+
+/// format → 文件扩展名。
+String extOfFormat(String format) {
+  switch (format) {
+    case 'markdown':
+      return 'md';
+    case 'raws':
+      return 'jsonl';
+    case 'html':
+      return 'html';
+    default:
+      return 'txt';
+  }
+}
+
+/// 取一个路径或文件名的 "stem"(去掉目录 + 去掉最后一个扩展名),作为 thread title。
+/// 例如:
+///   "rollout-2026-03-05T14-27-01-019cbcad.jsonl" → "rollout-2026-03-05T14-27-01-019cbcad"
+///   "exports/2026-03-05/hi.jsonl"               → "hi"
+///   "hi"                                         → "hi"
+String fileStem(String name) {
+  if (name.isEmpty) return '';
+  final lastSep = name.lastIndexOf(RegExp(r'[/\\]'));
+  final base = lastSep >= 0 ? name.substring(lastSep + 1) : name;
+  final dot = base.lastIndexOf('.');
+  if (dot <= 0) return base;
+  return base.substring(0, dot);
 }

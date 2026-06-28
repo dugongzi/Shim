@@ -5,9 +5,9 @@ import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/core/utils/time_format.dart';
 import 'package:shim/features/claude_session/domain/models/claude_project.dart';
 import 'package:shim/features/claude_session/presentation/providers/claude_session_query_provider.dart';
-import 'package:shim/features/claude_session/presentation/widgets/session_empty_box.dart';
-import 'package:shim/features/claude_session/presentation/widgets/session_error_box.dart';
-import 'package:shim/features/claude_session/presentation/widgets/session_list_tile.dart';
+import 'package:shim/common/widgets/session_empty_box.dart';
+import 'package:shim/common/widgets/session_error_box.dart';
+import 'package:shim/common/widgets/session_list_tile.dart';
 
 /// 左栏:列出 ~/.claude/projects/ 下所有项目目录。
 class ProjectsPane extends ConsumerWidget {

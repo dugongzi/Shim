@@ -1,5 +1,7 @@
 import 'package:shim/features/codex_session/data/datasources/codex_session_query_datasource.dart';
+import 'package:shim/features/codex_session/domain/models/codex_project.dart';
 import 'package:shim/features/codex_session/domain/models/codex_thread.dart';
+import 'package:shim/features/codex_session/domain/models/codex_thread_detail.dart';
 import 'package:shim/features/codex_session/domain/repositories/codex_session_query_repository.dart';
 
 class CodexSessionQueryRepositoryImpl implements CodexSessionQueryRepository {
@@ -11,5 +13,22 @@ class CodexSessionQueryRepositoryImpl implements CodexSessionQueryRepository {
   Future<List<CodexThread>> listThreads({int limit = 100}) async {
     final dtos = await dataSource.listThreads(limit: limit);
     return dtos.map((d) => d.toEntity()).toList();
+  }
+
+  @override
+  Future<List<CodexProject>> listProjects() async {
+    final dtos = await dataSource.listProjects();
+    return dtos.map((d) => d.toEntity()).toList();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listThreadsByCwd({required String cwd}) {
+    return dataSource.listThreadsByCwd(cwd: cwd);
+  }
+
+  @override
+  Future<CodexThreadDetail> loadThreadDetail({required String id}) async {
+    final dto = await dataSource.loadDetail(id: id);
+    return dto.toEntity();
   }
 }

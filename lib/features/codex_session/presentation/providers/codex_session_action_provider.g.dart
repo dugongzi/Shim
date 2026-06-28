@@ -56,7 +56,7 @@ final class CodexSessionActionRepositoryProvider
 }
 
 String _$codexSessionActionRepositoryHash() =>
-    r'537c8c6ded7d01a606535fe30ebb4bed57a96ca5';
+    r'bf433692c49addec15c993329f113d8f00826bab';
 
 @ProviderFor(deleteCodexThread)
 const deleteCodexThreadProvider = DeleteCodexThreadFamily._();
@@ -127,51 +127,98 @@ final class DeleteCodexThreadFamily extends $Family
   String toString() => r'deleteCodexThreadProvider';
 }
 
-/// 把 action 路由注册到 bridge
+/// 导出单条会话:弹保存对话框 → 写文件。返回 outputPath,用户取消返回 null。
 
-@ProviderFor(codexSessionActionRouteRegistration)
-const codexSessionActionRouteRegistrationProvider =
-    CodexSessionActionRouteRegistrationProvider._();
+@ProviderFor(exportCodexThread)
+const exportCodexThreadProvider = ExportCodexThreadFamily._();
 
-/// 把 action 路由注册到 bridge
+/// 导出单条会话:弹保存对话框 → 写文件。返回 outputPath,用户取消返回 null。
 
-final class CodexSessionActionRouteRegistrationProvider
-    extends $FunctionalProvider<bool, bool, bool>
-    with $Provider<bool> {
-  /// 把 action 路由注册到 bridge
-  const CodexSessionActionRouteRegistrationProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'codexSessionActionRouteRegistrationProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+final class ExportCodexThreadProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
+    with $FutureModifier<String?>, $FutureProvider<String?> {
+  /// 导出单条会话:弹保存对话框 → 写文件。返回 outputPath,用户取消返回 null。
+  const ExportCodexThreadProvider._({
+    required ExportCodexThreadFamily super.from,
+    required ({CodexThreadDetail detail, String format, String? dialogTitle})
+    super.argument,
+  }) : super(
+         retry: null,
+         name: r'exportCodexThreadProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
-  String debugGetCreateSourceHash() =>
-      _$codexSessionActionRouteRegistrationHash();
+  String debugGetCreateSourceHash() => _$exportCodexThreadHash();
+
+  @override
+  String toString() {
+    return r'exportCodexThreadProvider'
+        ''
+        '$argument';
+  }
 
   @$internal
   @override
-  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $FutureProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
-  bool create(Ref ref) {
-    return codexSessionActionRouteRegistration(ref);
+  FutureOr<String?> create(Ref ref) {
+    final argument =
+        this.argument
+            as ({CodexThreadDetail detail, String format, String? dialogTitle});
+    return exportCodexThread(
+      ref,
+      detail: argument.detail,
+      format: argument.format,
+      dialogTitle: argument.dialogTitle,
+    );
   }
 
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(bool value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<bool>(value),
-    );
+  @override
+  bool operator ==(Object other) {
+    return other is ExportCodexThreadProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-String _$codexSessionActionRouteRegistrationHash() =>
-    r'a829f6e5839bad2b9a30847804e7d52e9122f6ae';
+String _$exportCodexThreadHash() => r'7aa9b510e606fbc0016d93686ccfd43919872382';
+
+/// 导出单条会话:弹保存对话框 → 写文件。返回 outputPath,用户取消返回 null。
+
+final class ExportCodexThreadFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<String?>,
+          ({CodexThreadDetail detail, String format, String? dialogTitle})
+        > {
+  const ExportCodexThreadFamily._()
+    : super(
+        retry: null,
+        name: r'exportCodexThreadProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// 导出单条会话:弹保存对话框 → 写文件。返回 outputPath,用户取消返回 null。
+
+  ExportCodexThreadProvider call({
+    required CodexThreadDetail detail,
+    required String format,
+    String? dialogTitle,
+  }) => ExportCodexThreadProvider._(
+    argument: (detail: detail, format: format, dialogTitle: dialogTitle),
+    from: this,
+  );
+
+  @override
+  String toString() => r'exportCodexThreadProvider';
+}

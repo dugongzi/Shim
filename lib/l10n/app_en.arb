@@ -230,6 +230,7 @@
   "threadMessageAssistant": "Assistant",
   "threadMessageToolCall": "Tool call",
   "threadMessageToolResult": "Tool result",
+  "threadMessageGeneric": "Message",
   "expand": "Expand",
   "collapse": "Collapse",
   "sessionExport": "Export",

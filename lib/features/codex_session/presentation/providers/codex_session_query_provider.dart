@@ -1,8 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:shim/core/services/bridge_service.dart';
 import 'package:shim/features/codex_session/data/datasources/codex_session_query_datasource.dart';
 import 'package:shim/features/codex_session/data/repositories/codex_session_query_repository_impl.dart';
+import 'package:shim/features/codex_session/domain/models/codex_project.dart';
 import 'package:shim/features/codex_session/domain/models/codex_thread.dart';
+import 'package:shim/features/codex_session/domain/models/codex_thread_detail.dart';
 import 'package:shim/features/codex_session/domain/repositories/codex_session_query_repository.dart';
 
 part 'codex_session_query_provider.g.dart';
@@ -21,31 +22,17 @@ Future<List<CodexThread>> listCodexThreads(Ref ref, {int limit = 100}) async {
       .listThreads(limit: limit);
 }
 
-/// 把会话相关路由注册到 bridge。在 app 启动时 watch 一次让它生效。
-@Riverpod(keepAlive: true)
-bool codexSessionRouteRegistration(Ref ref) {
-  final bridge = ref.read(bridgeServiceProvider);
-  final repo = ref.read(codexSessionQueryRepositoryProvider);
+/// 按 cwd 分组的项目左栏列表。
+@riverpod
+Future<List<CodexProject>> listCodexProjects(Ref ref) async {
+  return ref.read(codexSessionQueryRepositoryProvider).listProjects();
+}
 
-  bridge.register('/session/list', (payload) async {
-    final limit = (payload['limit'] as int?) ?? 100;
-    final threads = await repo.listThreads(limit: limit);
-    return {
-      'threads': threads
-          .map((t) => {
-                'id': t.id,
-                'title': t.title,
-                'preview': t.preview,
-                'firstUserMessage': t.firstUserMessage,
-                'cwd': t.cwd,
-                'archived': t.archived,
-                'updatedAtMs': t.updatedAtMs,
-                'createdAtMs': t.createdAtMs,
-                'tokensUsed': t.tokensUsed,
-              })
-          .toList(),
-    };
-  });
-
-  return true;
+/// 完整加载 thread:sqlite 元数据 + rollout JSONL。详情视图与导出共用。
+@riverpod
+Future<CodexThreadDetail> codexThreadDetail(
+  Ref ref, {
+  required String id,
+}) {
+  return ref.read(codexSessionQueryRepositoryProvider).loadThreadDetail(id: id);
 }

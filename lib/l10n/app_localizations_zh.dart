@@ -565,6 +565,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get threadMessageToolResult => '工具结果';
 
   @override
+  String get threadMessageGeneric => '消息';
+
+  @override
   String get expand => '展开';
 
   @override

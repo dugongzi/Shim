@@ -1,41 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:shim/common/widgets/surface_card.dart';
-import 'package:shim/core/extensions/context_extensions.dart';
-import 'package:shim/core/utils/time_format.dart';
-import 'package:shim/features/claude_session/domain/models/claude_project.dart';
-import 'package:shim/features/claude_session/domain/models/claude_thread.dart';
-import 'package:shim/features/claude_session/presentation/providers/claude_session_query_provider.dart';
 import 'package:shim/common/widgets/session_empty_box.dart';
 import 'package:shim/common/widgets/session_error_box.dart';
 import 'package:shim/common/widgets/session_list_tile.dart';
+import 'package:shim/common/widgets/surface_card.dart';
+import 'package:shim/core/extensions/context_extensions.dart';
+import 'package:shim/core/utils/time_format.dart';
+import 'package:shim/features/codex_session/presentation/providers/codex_session_query_provider.dart';
 
-/// 中间栏:列出当前选中项目下的所有会话。project 为 null 时显示空提示。
-class ThreadsPane extends ConsumerWidget {
-  const ThreadsPane({
+/// 左栏:按 cwd 分组的 codex 项目列表。
+class ProjectsPane extends ConsumerWidget {
+  const ProjectsPane({
     super.key,
-    required this.project,
-    required this.selected,
+    required this.selectedCwd,
     required this.onSelect,
-    required this.emptyHint,
   });
 
-  final ClaudeProject? project;
-  final ClaudeThread? selected;
-  final ValueChanged<ClaudeThread> onSelect;
-  final String emptyHint;
+  final String? selectedCwd;
+  final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final asyncProjects = ref.watch(listCodexProjectsProvider);
     final l10n = context.l10n;
-    if (project == null) {
-      return SurfaceCard(
-        child: Center(child: SessionEmptyBox(message: emptyHint)),
-      );
-    }
-    final asyncThreads = ref.watch(
-      listClaudeThreadsProvider(encodedDir: project!.encodedDir),
-    );
 
     return SurfaceCard(
       padding: EdgeInsets.zero,
@@ -48,7 +35,7 @@ class ThreadsPane extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    l10n.sessionsTitle,
+                    l10n.claudeProjects,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -58,9 +45,7 @@ class ThreadsPane extends ConsumerWidget {
                   tooltip: l10n.refresh,
                   iconSize: 18,
                   visualDensity: VisualDensity.compact,
-                  onPressed: () => ref.invalidate(
-                    listClaudeThreadsProvider(encodedDir: project!.encodedDir),
-                  ),
+                  onPressed: () => ref.invalidate(listCodexProjectsProvider),
                   icon: const Icon(Icons.refresh_rounded),
                 ),
               ],
@@ -68,7 +53,7 @@ class ThreadsPane extends ConsumerWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: asyncThreads.when(
+            child: asyncProjects.when(
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
@@ -76,23 +61,23 @@ class ThreadsPane extends ConsumerWidget {
                 ),
               ),
               error: (e, _) => SessionErrorBox(message: e.toString()),
-              data: (threads) {
-                if (threads.isEmpty) {
+              data: (projects) {
+                if (projects.isEmpty) {
                   return SessionEmptyBox(message: l10n.sessionsEmpty);
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: threads.length,
+                  itemCount: projects.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 2),
                   itemBuilder: (context, i) {
-                    final t = threads[i];
-                    final isSelected = selected?.sessionId == t.sessionId;
-                    final title = t.title.isEmpty ? t.sessionId : t.title;
+                    final g = projects[i];
+                    final isSelected = selectedCwd == g.cwd;
                     return SessionListTile(
-                      title: title,
-                      subtitle: formatRelativeTime(context, t.updatedAtMs),
+                      title: _projectDisplayName(g.cwd),
+                      subtitle:
+                          '${l10n.claudeProjectSubtitle(g.sessionCount, formatRelativeTime(context, g.lastActiveMs))} · ${_projectParentHint(g.cwd)}',
                       selected: isSelected,
-                      onTap: () => onSelect(t),
+                      onTap: () => onSelect(g.cwd),
                     );
                   },
                 );
@@ -103,4 +88,22 @@ class ThreadsPane extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// 取路径最后一段(项目名本身)
+String _projectDisplayName(String path) {
+  if (path.isEmpty) return '(unknown)';
+  final normalized = path.replaceAll('\\', '/');
+  final segments = normalized.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.isEmpty) return path;
+  return segments.last;
+}
+
+/// 取倒数第二段父目录,用作 subtitle 里的辨识提示
+String _projectParentHint(String path) {
+  if (path.isEmpty) return '';
+  final normalized = path.replaceAll('\\', '/');
+  final segments = normalized.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.length < 2) return path;
+  return segments[segments.length - 2];
 }

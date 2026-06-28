@@ -135,50 +135,134 @@ final class ListCodexThreadsFamily extends $Family
   String toString() => r'listCodexThreadsProvider';
 }
 
-/// 把会话相关路由注册到 bridge。在 app 启动时 watch 一次让它生效。
+/// 按 cwd 分组的项目左栏列表。
 
-@ProviderFor(codexSessionRouteRegistration)
-const codexSessionRouteRegistrationProvider =
-    CodexSessionRouteRegistrationProvider._();
+@ProviderFor(listCodexProjects)
+const listCodexProjectsProvider = ListCodexProjectsProvider._();
 
-/// 把会话相关路由注册到 bridge。在 app 启动时 watch 一次让它生效。
+/// 按 cwd 分组的项目左栏列表。
 
-final class CodexSessionRouteRegistrationProvider
-    extends $FunctionalProvider<bool, bool, bool>
-    with $Provider<bool> {
-  /// 把会话相关路由注册到 bridge。在 app 启动时 watch 一次让它生效。
-  const CodexSessionRouteRegistrationProvider._()
+final class ListCodexProjectsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<CodexProject>>,
+          List<CodexProject>,
+          FutureOr<List<CodexProject>>
+        >
+    with
+        $FutureModifier<List<CodexProject>>,
+        $FutureProvider<List<CodexProject>> {
+  /// 按 cwd 分组的项目左栏列表。
+  const ListCodexProjectsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'codexSessionRouteRegistrationProvider',
-        isAutoDispose: false,
+        name: r'listCodexProjectsProvider',
+        isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$codexSessionRouteRegistrationHash();
+  String debugGetCreateSourceHash() => _$listCodexProjectsHash();
 
   @$internal
   @override
-  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $FutureProviderElement<List<CodexProject>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
 
   @override
-  bool create(Ref ref) {
-    return codexSessionRouteRegistration(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(bool value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<bool>(value),
-    );
+  FutureOr<List<CodexProject>> create(Ref ref) {
+    return listCodexProjects(ref);
   }
 }
 
-String _$codexSessionRouteRegistrationHash() =>
-    r'9627ef006af689f1c8814f21a53c916832485766';
+String _$listCodexProjectsHash() => r'601869bb35188d772840147a040f0b6d1dc7a055';
+
+/// 完整加载 thread:sqlite 元数据 + rollout JSONL。详情视图与导出共用。
+
+@ProviderFor(codexThreadDetail)
+const codexThreadDetailProvider = CodexThreadDetailFamily._();
+
+/// 完整加载 thread:sqlite 元数据 + rollout JSONL。详情视图与导出共用。
+
+final class CodexThreadDetailProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CodexThreadDetail>,
+          CodexThreadDetail,
+          FutureOr<CodexThreadDetail>
+        >
+    with
+        $FutureModifier<CodexThreadDetail>,
+        $FutureProvider<CodexThreadDetail> {
+  /// 完整加载 thread:sqlite 元数据 + rollout JSONL。详情视图与导出共用。
+  const CodexThreadDetailProvider._({
+    required CodexThreadDetailFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'codexThreadDetailProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$codexThreadDetailHash();
+
+  @override
+  String toString() {
+    return r'codexThreadDetailProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<CodexThreadDetail> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<CodexThreadDetail> create(Ref ref) {
+    final argument = this.argument as String;
+    return codexThreadDetail(ref, id: argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CodexThreadDetailProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$codexThreadDetailHash() => r'b8ee110830f0f9c325ac5b51bacf0871eba2c83c';
+
+/// 完整加载 thread:sqlite 元数据 + rollout JSONL。详情视图与导出共用。
+
+final class CodexThreadDetailFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<CodexThreadDetail>, String> {
+  const CodexThreadDetailFamily._()
+    : super(
+        retry: null,
+        name: r'codexThreadDetailProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// 完整加载 thread:sqlite 元数据 + rollout JSONL。详情视图与导出共用。
+
+  CodexThreadDetailProvider call({required String id}) =>
+      CodexThreadDetailProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'codexThreadDetailProvider';
+}
