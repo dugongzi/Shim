@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:shim/core/constants/app_sizes.dart';
 import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/features/home/presentation/providers/inject_query_provider.dart';
 
 /// 侧栏底部:Codex 调试端口连通状态(轮询)。
+/// 不带自身装饰,容器由父级提供;依赖 1s/10s 自动轮询,无手动刷新按钮。
 class SidebarStatus extends HookConsumerWidget {
   const SidebarStatus({super.key, this.debugPort = 9229});
 
@@ -46,50 +46,26 @@ class SidebarStatus extends HookConsumerWidget {
       text = context.l10n.codexDisconnected;
     }
 
-    return Container(
-      padding: EdgeInsets.all(10.cw(min: 8, max: 12)),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(
-          alpha: context.isDark ? 0.32 : 0.42,
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
-        borderRadius: BorderRadius.circular(AppSizes.cardRadius),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(
-            alpha: context.isDark ? 0.28 : 0.22,
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
+                ),
           ),
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-          ),
-          SizedBox(width: AppSizes.itemGap),
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-          IconButton(
-            tooltip: context.l10n.refresh,
-            visualDensity: VisualDensity.compact,
-            iconSize: 16,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () =>
-                ref.invalidate(isDebugPortAliveProvider(debugPort: debugPort)),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

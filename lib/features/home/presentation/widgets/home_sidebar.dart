@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shim/core/constants/app_sizes.dart';
 import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/core/themes/app_colors.dart';
-import 'package:shim/features/home/presentation/widgets/proxy_status.dart';
-import 'package:shim/features/home/presentation/widgets/sidebar_action_icons_row.dart';
 import 'package:shim/features/home/presentation/widgets/sidebar_brand.dart';
-import 'package:shim/features/home/presentation/widgets/sidebar_status.dart';
+import 'package:shim/features/home/presentation/widgets/sidebar_system_panel.dart';
 
 /// 主页面左侧侧栏外壳:品牌 + tab 列表 + 底部动作 / 状态。
 /// 关键:不用任何 Scroll widget(viewport 永远裁剪),纯 Column,
@@ -73,11 +71,7 @@ class HomeSidebar extends StatelessWidget {
           ],
           const Spacer(),
           SizedBox(height: AppSizes.sectionGap),
-          const SidebarActionIconsRow(debugPort: 9229),
-          SizedBox(height: AppSizes.itemGap),
-          const SidebarStatus(),
-          SizedBox(height: AppSizes.itemGap),
-          const ProxyStatus(),
+          const SidebarSystemPanel(),
         ],
       ),
     );

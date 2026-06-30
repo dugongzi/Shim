@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:shim/core/constants/app_sizes.dart';
 import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/core/services/local_proxy_service.dart';
 import 'package:shim/features/providers/presentation/providers/provider_query_provider.dart';
 
 /// 侧栏底部:本地代理服务状态。
+/// 不带自身装饰,容器由 SidebarSystemPanel 统一提供。
 class ProxyStatus extends ConsumerWidget {
   const ProxyStatus({super.key});
 
@@ -32,43 +32,29 @@ class ProxyStatus extends ConsumerWidget {
                 ? l10n.proxyEnabledOnPort(proxyConfig?.port ?? 8787)
                 : l10n.proxyDisabled;
 
-        return Container(
-          padding: EdgeInsets.all(10.cw(min: 8, max: 12)),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(
-              alpha: context.isDark ? 0.32 : 0.42,
-            ),
-            borderRadius: BorderRadius.circular(AppSizes.cardRadius),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(
-                alpha: context.isDark ? 0.28 : 0.22,
+        return Row(
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
               ),
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: dotColor,
-                  shape: BoxShape.circle,
-                ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
               ),
-              SizedBox(width: AppSizes.itemGap),
-              Expanded(
-                child: Text(
-                  text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
