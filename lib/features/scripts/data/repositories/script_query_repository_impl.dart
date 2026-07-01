@@ -17,4 +17,7 @@ class ScriptQueryRepositoryImpl implements ScriptQueryRepository {
   Future<bool> isScriptEnabled({required String id}) {
     return _dataSource.isScriptEnabled(id: id);
   }
+
+  @override
+  Future<bool> isReloadOnRun() => _dataSource.isReloadOnRun();
 }

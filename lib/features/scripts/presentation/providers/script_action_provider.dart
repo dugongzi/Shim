@@ -73,3 +73,8 @@ Future<String> createScript(
       .read(scriptActionRepositoryProvider)
       .createScript(name: name, code: code);
 }
+
+@riverpod
+Future<void> setReloadOnRun(Ref ref, {required bool value}) async {
+  await ref.read(scriptActionRepositoryProvider).setReloadOnRun(value: value);
+}

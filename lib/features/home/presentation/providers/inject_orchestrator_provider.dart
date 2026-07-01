@@ -13,8 +13,33 @@ import 'package:shim/core/services/takeover_service.dart';
 import 'package:shim/features/providers/presentation/providers/provider_action_bridge_provider.dart';
 import 'package:shim/features/providers/presentation/providers/provider_health_provider.dart';
 import 'package:shim/features/providers/presentation/providers/provider_query_provider.dart';
+import 'package:shim/features/scripts/domain/repositories/script_query_repository.dart';
+import 'package:shim/features/scripts/presentation/providers/script_query_provider.dart';
 
 part 'inject_orchestrator_provider.g.dart';
+
+/// 读所有 enabled 用户脚本文件,按脚本顺序返回代码列表。
+/// enabled 判定走 [ScriptQueryRepository.isScriptEnabled] (SharedPreferences)。
+///
+/// **调用方约定**:必须传入已经在 async gap 之前从 ref 读出的 repo,
+/// 否则 autoDispose provider(如 [injectToRunningPort])在 `await` 后
+/// 已 disposed,再用 `ref.read(...)` 会抛 "Ref after disposed"。
+/// 任何 IO / 读盘失败静默跳过——用户脚本不应阻断内置 codex_enhance 注入。
+Future<List<String>> _loadEnabledUserScripts(
+  ScriptQueryRepository repo,
+) async {
+  try {
+    final scripts = await repo.listScripts();
+    final result = <String>[];
+    for (final s in scripts) {
+      final enabled = await repo.isScriptEnabled(id: s.id);
+      if (enabled) result.add(s.code);
+    }
+    return result;
+  } catch (_) {
+    return const [];
+  }
+}
 
 /// 触发全部跨 feature 的 bridge 路由注册。注入前必须先跑一次,确保 codex_enhance.js
 /// 调用 `/session/list` `/provider/list` 等路由时 dart 侧已挂上 handler。
@@ -36,13 +61,15 @@ void _registerAllBridgeRoutes(Ref ref) {
 @riverpod
 Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
   final repo = ref.read(injectQueryRepositoryProvider);
+  final scriptsRepo = ref.read(scriptQueryRepositoryProvider);
   final cdp = ref.read(cdpServiceProvider);
   final bridge = ref.read(bridgeServiceProvider);
   _registerAllBridgeRoutes(ref);
   await ref.read(claudeBridgeQueryRepositoryProvider).ensureHydrated();
   final script = await repo.loadInjectScript();
+  final userScripts = await _loadEnabledUserScripts(scriptsRepo);
   await cdp.connect(debugPort);
-  await bridge.install(documentScripts: [script]);
+  await bridge.install(documentScripts: [script, ...userScripts]);
 }
 
 /// 完整流程:
@@ -54,6 +81,7 @@ Future<void> injectToRunningPort(Ref ref, {required int debugPort}) async {
 Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
   // 所有 ref 依赖在第一个 await 前读出(避免 autoDispose provider 在 async gap 后用 ref)
   final repo = ref.read(injectQueryRepositoryProvider);
+  final scriptsRepo = ref.read(scriptQueryRepositoryProvider);
   final cdp = ref.read(cdpServiceProvider);
   final bridge = ref.read(bridgeServiceProvider);
   final launcher = ref.read(codexLauncherServiceProvider);
@@ -73,9 +101,10 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
   }
 
   final script = await repo.loadInjectScript();
+  final userScripts = await _loadEnabledUserScripts(scriptsRepo);
   if (!ref.mounted) return;
   await cdp.connect(debugPort);
-  await bridge.install(documentScripts: [script]);
+  await bridge.install(documentScripts: [script, ...userScripts]);
 }
 
 /// 已注入状态下手动刷新 Codex 页面 + 重新装 bridge + 重跑脚本。
@@ -83,6 +112,7 @@ Future<void> launchAndInject(Ref ref, {required int debugPort}) async {
 @riverpod
 Future<void> reloadCodexAndReinject(Ref ref, {required int debugPort}) async {
   final repo = ref.read(injectQueryRepositoryProvider);
+  final scriptsRepo = ref.read(scriptQueryRepositoryProvider);
   final cdp = ref.read(cdpServiceProvider);
   final bridge = ref.read(bridgeServiceProvider);
   _registerAllBridgeRoutes(ref);
@@ -92,5 +122,6 @@ Future<void> reloadCodexAndReinject(Ref ref, {required int debugPort}) async {
   await cdp.reloadPage();
   await Future<void>.delayed(const Duration(milliseconds: 800));
   final script = await repo.loadInjectScript();
-  await bridge.install(documentScripts: [script]);
+  final userScripts = await _loadEnabledUserScripts(scriptsRepo);
+  await bridge.install(documentScripts: [script, ...userScripts]);
 }

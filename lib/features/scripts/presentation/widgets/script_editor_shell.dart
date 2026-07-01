@@ -154,6 +154,18 @@ class ScriptEditorShell extends HookConsumerWidget {
       };
     }, [dirty, current?.id]);
 
+    final reloadOnRunAsync = ref.watch(reloadOnRunProvider);
+    final reloadOnRun = reloadOnRunAsync.value ?? true;
+
+    Future<void> handleReloadOnRunChanged(bool value) async {
+      try {
+        await ref.read(setReloadOnRunProvider(value: value).future);
+        ref.invalidate(reloadOnRunProvider);
+      } catch (e) {
+        SmartDialog.showToast(e.toString());
+      }
+    }
+
     Future<void> handleRun() async {
       if (running.value || saving.value) return;
       if (current == null) {
@@ -167,12 +179,21 @@ class ScriptEditorShell extends HookConsumerWidget {
           setScriptsEnabledProvider(ids: [current.id], enabled: true).future,
         );
         ref.invalidate(scriptEnabledProvider(id: current.id));
-        ref.invalidate(
-          reloadCodexAndReinjectProvider(debugPort: _kDebugPort),
-        );
-        await ref.read(
-          reloadCodexAndReinjectProvider(debugPort: _kDebugPort).future,
-        );
+        if (reloadOnRun) {
+          ref.invalidate(
+            reloadCodexAndReinjectProvider(debugPort: _kDebugPort),
+          );
+          await ref.read(
+            reloadCodexAndReinjectProvider(debugPort: _kDebugPort).future,
+          );
+        } else {
+          ref.invalidate(
+            injectToRunningPortProvider(debugPort: _kDebugPort),
+          );
+          await ref.read(
+            injectToRunningPortProvider(debugPort: _kDebugPort).future,
+          );
+        }
         SmartDialog.showToast(l10n.scriptRunSuccess);
       } catch (e) {
         SmartDialog.showToast(e.toString());
@@ -251,6 +272,8 @@ class ScriptEditorShell extends HookConsumerWidget {
                 dirty: dirty.value,
                 saving: saving.value,
                 hasScript: current != null,
+                reloadOnRun: reloadOnRun,
+                onReloadOnRunChanged: handleReloadOnRunChanged,
               ),
             ],
           ),

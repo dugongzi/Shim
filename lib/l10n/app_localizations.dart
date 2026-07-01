@@ -200,6 +200,18 @@ abstract class AppLocalizations {
   /// **'保存中...'**
   String get editorSavingLabel;
 
+  /// No description provided for @editorReloadOnRun.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行时刷新'**
+  String get editorReloadOnRun;
+
+  /// No description provided for @editorReloadOnRunTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启:运行按钮会重新加载 Codex 页面并重装脚本;关闭:仅重新注入,不刷新页面'**
+  String get editorReloadOnRunTooltip;
+
   /// No description provided for @noScriptSelected.
   ///
   /// In zh, this message translates to:

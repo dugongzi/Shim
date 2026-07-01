@@ -214,3 +214,41 @@ final class ScriptEnabledFamily extends $Family
   @override
   String toString() => r'scriptEnabledProvider';
 }
+
+/// 编辑器 Run 时是否同时刷新 Codex(默认 true)。
+
+@ProviderFor(reloadOnRun)
+const reloadOnRunProvider = ReloadOnRunProvider._();
+
+/// 编辑器 Run 时是否同时刷新 Codex(默认 true)。
+
+final class ReloadOnRunProvider
+    extends $FunctionalProvider<AsyncValue<bool>, bool, FutureOr<bool>>
+    with $FutureModifier<bool>, $FutureProvider<bool> {
+  /// 编辑器 Run 时是否同时刷新 Codex(默认 true)。
+  const ReloadOnRunProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reloadOnRunProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reloadOnRunHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<bool> create(Ref ref) {
+    return reloadOnRun(ref);
+  }
+}
+
+String _$reloadOnRunHash() => r'17d3dc3dd4e146592da77f8dbdef1b36c79045a4';

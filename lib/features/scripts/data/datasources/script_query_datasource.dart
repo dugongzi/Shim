@@ -46,6 +46,14 @@ class ScriptQueryDatasource {
     return value ?? false;
   }
 
+  /// 编辑器 Run 时是否连带刷新 Codex 页面。默认 true(维持旧行为)。
+  Future<bool> isReloadOnRun() async {
+    final value = await _appStorage.getBool(_reloadOnRunKey);
+    return value ?? true;
+  }
+
+  static const _reloadOnRunKey = 'script_editor_reload_on_run';
+
   static String _enabledKey(String id) => 'script_enabled:$id';
 
   ScriptMetadata _fallbackMetadata(String filename) {

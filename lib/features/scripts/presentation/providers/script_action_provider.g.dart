@@ -461,3 +461,72 @@ final class CreateScriptFamily extends $Family
   @override
   String toString() => r'createScriptProvider';
 }
+
+@ProviderFor(setReloadOnRun)
+const setReloadOnRunProvider = SetReloadOnRunFamily._();
+
+final class SetReloadOnRunProvider
+    extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
+    with $FutureModifier<void>, $FutureProvider<void> {
+  const SetReloadOnRunProvider._({
+    required SetReloadOnRunFamily super.from,
+    required bool super.argument,
+  }) : super(
+         retry: null,
+         name: r'setReloadOnRunProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$setReloadOnRunHash();
+
+  @override
+  String toString() {
+    return r'setReloadOnRunProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<void> create(Ref ref) {
+    final argument = this.argument as bool;
+    return setReloadOnRun(ref, value: argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SetReloadOnRunProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$setReloadOnRunHash() => r'6beb202e98b50f884af954393da2ec1eb158dda5';
+
+final class SetReloadOnRunFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<void>, bool> {
+  const SetReloadOnRunFamily._()
+    : super(
+        retry: null,
+        name: r'setReloadOnRunProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  SetReloadOnRunProvider call({required bool value}) =>
+      SetReloadOnRunProvider._(argument: value, from: this);
+
+  @override
+  String toString() => r'setReloadOnRunProvider';
+}

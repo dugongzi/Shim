@@ -60,6 +60,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorSavingLabel => '保存中...';
 
   @override
+  String get editorReloadOnRun => '运行时刷新';
+
+  @override
+  String get editorReloadOnRunTooltip =>
+      '开启:运行按钮会重新加载 Codex 页面并重装脚本;关闭:仅重新注入,不刷新页面';
+
+  @override
   String get noScriptSelected => '未选中脚本';
 
   @override

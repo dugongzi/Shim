@@ -28,3 +28,9 @@ Future<List<InjectScript>> scripts(Ref ref) async {
 Future<bool> scriptEnabled(Ref ref, {required String id}) async {
   return ref.read(scriptQueryRepositoryProvider).isScriptEnabled(id: id);
 }
+
+/// 编辑器 Run 时是否同时刷新 Codex(默认 true)。
+@riverpod
+Future<bool> reloadOnRun(Ref ref) async {
+  return ref.read(scriptQueryRepositoryProvider).isReloadOnRun();
+}

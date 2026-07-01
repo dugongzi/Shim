@@ -28,4 +28,8 @@ class ScriptActionRepositoryImpl implements ScriptActionRepository {
   @override
   Future<String> createScript({required String name, required String code}) =>
       _dataSource.createScript(name: name, code: code);
+
+  @override
+  Future<void> setReloadOnRun({required bool value}) =>
+      _dataSource.setReloadOnRun(value: value);
 }

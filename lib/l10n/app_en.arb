@@ -17,6 +17,8 @@
   "editorSavedLabel": "Saved",
   "editorUnsavedLabel": "Unsaved",
   "editorSavingLabel": "Saving...",
+  "editorReloadOnRun": "Reload on Run",
+  "editorReloadOnRunTooltip": "On: Run reloads the Codex page and reinstalls scripts. Off: reinject only, no page reload.",
   "noScriptSelected": "No script selected",
   "noScriptSelectedHint": "Pick a script on the left, or click + to create one",
   "selectScriptFirst": "Select a script first",

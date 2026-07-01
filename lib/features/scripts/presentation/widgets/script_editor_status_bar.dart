@@ -12,6 +12,8 @@ class ScriptEditorStatusBar extends StatelessWidget {
     required this.dirty,
     required this.saving,
     required this.hasScript,
+    required this.reloadOnRun,
+    required this.onReloadOnRunChanged,
   });
 
   /// 光标行(1-based 展示前 +1);null 表示无光标信息
@@ -22,6 +24,8 @@ class ScriptEditorStatusBar extends StatelessWidget {
   final bool dirty;
   final bool saving;
   final bool hasScript;
+  final bool reloadOnRun;
+  final ValueChanged<bool> onReloadOnRunChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +51,32 @@ class ScriptEditorStatusBar extends StatelessWidget {
         children: [
           if (saveLabel != null) ScriptEditorStatusItem(text: saveLabel),
           const Spacer(),
+          Tooltip(
+            message: l10n.editorReloadOnRunTooltip,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScriptEditorStatusItem(text: l10n.editorReloadOnRun),
+                const SizedBox(width: 6),
+                SizedBox(
+                  height: 18,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Switch(
+                      value: reloadOnRun,
+                      onChanged: onReloadOnRunChanged,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: Colors.white.withValues(alpha: 0.35),
+                      inactiveThumbColor: Colors.white.withValues(alpha: 0.85),
+                      inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
           if (line != null && column != null)
             ScriptEditorStatusItem(
               text: '${l10n.editorLine} ${line! + 1}, ${l10n.editorColumn} ${column! + 1}',

@@ -18,4 +18,7 @@ abstract class ScriptActionRepository {
 
   /// 创建新脚本文件,写入初始代码。返回最终文件名(id)。
   Future<String> createScript({required String name, required String code});
+
+  /// 编辑器 Run 时是否同时刷新 Codex 页面。
+  Future<void> setReloadOnRun({required bool value});
 }

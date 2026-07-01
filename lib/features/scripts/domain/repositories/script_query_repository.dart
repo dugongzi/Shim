@@ -6,4 +6,7 @@ abstract class ScriptQueryRepository {
 
   /// 单个脚本启用状态（默认 false）
   Future<bool> isScriptEnabled({required String id});
+
+  /// 编辑器 Run 时是否同时刷新 Codex(默认 true)
+  Future<bool> isReloadOnRun();
 }

@@ -60,6 +60,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSavingLabel => 'Saving...';
 
   @override
+  String get editorReloadOnRun => 'Reload on Run';
+
+  @override
+  String get editorReloadOnRunTooltip =>
+      'On: Run reloads the Codex page and reinstalls scripts. Off: reinject only, no page reload.';
+
+  @override
   String get noScriptSelected => 'No script selected';
 
   @override
