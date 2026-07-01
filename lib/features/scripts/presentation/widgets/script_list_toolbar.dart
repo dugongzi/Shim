@@ -6,8 +6,6 @@ class ScriptListToolbar extends StatelessWidget {
   const ScriptListToolbar({
     super.key,
     required this.selectedCount,
-    required this.onImport,
-    required this.onCreate,
     required this.onSelectAll,
     required this.onInvertSelection,
     required this.onDeleteSelected,
@@ -16,8 +14,6 @@ class ScriptListToolbar extends StatelessWidget {
   });
 
   final int selectedCount;
-  final VoidCallback? onImport;
-  final VoidCallback? onCreate;
   final VoidCallback? onSelectAll;
   final VoidCallback? onInvertSelection;
   final VoidCallback? onDeleteSelected;
@@ -28,62 +24,42 @@ class ScriptListToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasSelection = selectedCount > 0;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        FilledButton.icon(
-          onPressed: onCreate,
-          icon: const Icon(Icons.add_rounded, size: 18),
-          label: Text(context.l10n.newScript),
-        ),
-        SizedBox(width: AppSizes.itemGap),
-        FilledButton.tonalIcon(
-          onPressed: onImport,
-          icon: const Icon(Icons.file_upload_outlined, size: 18),
-          label: Text(context.l10n.importScript),
-        ),
-        SizedBox(width: AppSizes.itemGap),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextButton.icon(
-                  onPressed: hasSelection ? onDeleteSelected : null,
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: Text(context.l10n.deleteSelected),
-                ),
-                SizedBox(width: AppSizes.itemGap),
-                TextButton.icon(
-                  onPressed: hasSelection ? onDisableSelected : null,
-                  icon: const Icon(Icons.power_off_rounded, size: 18),
-                  label: Text(context.l10n.disableSelected),
-                ),
-                SizedBox(width: AppSizes.itemGap),
-                TextButton.icon(
-                  onPressed: hasSelection ? onEnableSelected : null,
-                  icon: const Icon(Icons.power_settings_new_rounded, size: 18),
-                  label: Text(context.l10n.enableSelected),
-                ),
-                SizedBox(width: AppSizes.itemGap),
-                TextButton.icon(
-                  onPressed: onInvertSelection,
-                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                  label: Text(context.l10n.invertSelection),
-                ),
-                SizedBox(width: AppSizes.itemGap),
-                TextButton.icon(
-                  onPressed: onSelectAll,
-                  icon: const Icon(Icons.checklist_rounded, size: 18),
-                  label: Text(context.l10n.selectAll),
-                ),
-              ].reversed.toList(),
-            ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton.icon(
+            onPressed: onSelectAll,
+            icon: const Icon(Icons.checklist_rounded, size: 18),
+            label: Text(context.l10n.selectAll),
           ),
-        ),
-      ],
+          SizedBox(width: AppSizes.itemGap),
+          TextButton.icon(
+            onPressed: onInvertSelection,
+            icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+            label: Text(context.l10n.invertSelection),
+          ),
+          SizedBox(width: AppSizes.itemGap),
+          TextButton.icon(
+            onPressed: hasSelection ? onEnableSelected : null,
+            icon: const Icon(Icons.power_settings_new_rounded, size: 18),
+            label: Text(context.l10n.enableSelected),
+          ),
+          SizedBox(width: AppSizes.itemGap),
+          TextButton.icon(
+            onPressed: hasSelection ? onDisableSelected : null,
+            icon: const Icon(Icons.power_off_rounded, size: 18),
+            label: Text(context.l10n.disableSelected),
+          ),
+          SizedBox(width: AppSizes.itemGap),
+          TextButton.icon(
+            onPressed: hasSelection ? onDeleteSelected : null,
+            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            label: Text(context.l10n.deleteSelected),
+          ),
+        ],
+      ),
     );
   }
 }

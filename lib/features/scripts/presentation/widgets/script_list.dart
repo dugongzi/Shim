@@ -3,6 +3,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shim/core/constants/app_sizes.dart';
+import 'package:shim/core/extensions/context_extensions.dart';
+import 'package:shim/core/themes/app_colors.dart';
 import 'package:shim/features/scripts/domain/models/inject_script.dart';
 import 'package:shim/features/scripts/presentation/providers/script_action_provider.dart';
 import 'package:shim/features/scripts/presentation/providers/script_query_provider.dart';
@@ -79,51 +81,141 @@ class ScriptList extends HookConsumerWidget {
       }
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
       children: [
-        ScriptListToolbar(
-          selectedCount: selectedOnPage,
-          onImport: () => handleImport(),
-          onCreate: () => context.push(ScriptsRoute.toEditorNew()),
-          onSelectAll: pageItems.isEmpty
-              ? null
-              : () => selected.value = {...selected.value, ...pageIds},
-          onInvertSelection: pageItems.isEmpty
-              ? null
-              : () {
-                  final next = {...selected.value};
-                  for (final id in pageIds) {
-                    if (next.contains(id)) {
-                      next.remove(id);
-                    } else {
-                      next.add(id);
-                    }
-                  }
-                  selected.value = next;
-                },
-          onDeleteSelected:
-              selectedOnPage == 0 ? null : () => handleDeleteSelected(),
-          onEnableSelected:
-              selectedOnPage == 0 ? null : () => handleSetEnabled(true),
-          onDisableSelected:
-              selectedOnPage == 0 ? null : () => handleSetEnabled(false),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ScriptListToolbar(
+              selectedCount: selectedOnPage,
+              onSelectAll: pageItems.isEmpty
+                  ? null
+                  : () => selected.value = {...selected.value, ...pageIds},
+              onInvertSelection: pageItems.isEmpty
+                  ? null
+                  : () {
+                      final next = {...selected.value};
+                      for (final id in pageIds) {
+                        if (next.contains(id)) {
+                          next.remove(id);
+                        } else {
+                          next.add(id);
+                        }
+                      }
+                      selected.value = next;
+                    },
+              onDeleteSelected:
+                  selectedOnPage == 0 ? null : () => handleDeleteSelected(),
+              onEnableSelected:
+                  selectedOnPage == 0 ? null : () => handleSetEnabled(true),
+              onDisableSelected:
+                  selectedOnPage == 0 ? null : () => handleSetEnabled(false),
+            ),
+            SizedBox(height: AppSizes.sectionGap),
+            Expanded(
+              child: ScriptListBody(
+                scriptsAsync: scriptsAsync,
+                pageItems: pageItems,
+                selected: selected,
+              ),
+            ),
+            SizedBox(height: AppSizes.sectionGap),
+            ScriptListPagination(
+              currentPage: clampedPage,
+              totalPages: totalPages,
+              onPageSelected: (page) => currentPage.value = page,
+            ),
+          ],
         ),
-        SizedBox(height: AppSizes.sectionGap),
-        Expanded(
-          child: ScriptListBody(
-            scriptsAsync: scriptsAsync,
-            pageItems: pageItems,
-            selected: selected,
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _AccentFab(
+                icon: Icons.file_upload_outlined,
+                tooltip: context.l10n.importScript,
+                onTap: () => handleImport(),
+              ),
+              const SizedBox(height: 12),
+              _AccentFab(
+                icon: Icons.add_rounded,
+                tooltip: context.l10n.newScript,
+                onTap: () => context.push(ScriptsRoute.toEditorNew()),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: AppSizes.sectionGap),
-        ScriptListPagination(
-          currentPage: clampedPage,
-          totalPages: totalPages,
-          onPageSelected: (page) => currentPage.value = page,
-        ),
       ],
+    );
+  }
+}
+
+/// 学 [HomeTabItem] 选中态的浮动按钮:深底 + 主色描边 + 主色光晕 + 主色图标。
+class _AccentFab extends StatelessWidget {
+  const _AccentFab({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = context.isDark;
+    final accent = colorScheme.primary;
+    final radius = BorderRadius.circular(16);
+
+    final bg = isDark
+        ? AppColors.darkBgBottom.withValues(alpha: 0.92)
+        : accent.withValues(alpha: 0.12);
+    final border = accent.withValues(alpha: isDark ? 0.55 : 0.32);
+    final fg = isDark ? Colors.white : accent;
+
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: radius,
+          border: Border.all(color: border),
+          boxShadow: isDark
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.32),
+                    blurRadius: 22,
+                    spreadRadius: -2,
+                    offset: const Offset(2, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.18),
+                    blurRadius: 16,
+                    spreadRadius: -4,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: radius,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onTap,
+            child: Center(child: Icon(icon, size: 22, color: fg)),
+          ),
+        ),
+      ),
     );
   }
 }
