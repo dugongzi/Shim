@@ -67,6 +67,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'On: Run reloads the Codex page and reinstalls scripts. Off: reinject only, no page reload.';
 
   @override
+  String get editorManual => 'Manual';
+
+  @override
+  String editorManualLoadFailed(String error) {
+    return 'Failed to load manual: $error';
+  }
+
+  @override
   String get editorHotRun => 'Hot Run';
 
   @override

@@ -212,6 +212,18 @@ abstract class AppLocalizations {
   /// **'开启:运行按钮会重新加载 Codex 页面并重装脚本;关闭:仅重新注入,不刷新页面'**
   String get editorReloadOnRunTooltip;
 
+  /// No description provided for @editorManual.
+  ///
+  /// In zh, this message translates to:
+  /// **'手册'**
+  String get editorManual;
+
+  /// No description provided for @editorManualLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'手册加载失败:{error}'**
+  String editorManualLoadFailed(String error);
+
   /// No description provided for @editorHotRun.
   ///
   /// In zh, this message translates to:

@@ -67,6 +67,14 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启:运行按钮会重新加载 Codex 页面并重装脚本;关闭:仅重新注入,不刷新页面';
 
   @override
+  String get editorManual => '手册';
+
+  @override
+  String editorManualLoadFailed(String error) {
+    return '手册加载失败:$error';
+  }
+
+  @override
   String get editorHotRun => '热运行';
 
   @override

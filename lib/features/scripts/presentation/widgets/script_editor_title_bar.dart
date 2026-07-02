@@ -4,6 +4,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:path/path.dart' as p;
 import 'package:shim/core/extensions/context_extensions.dart';
 import 'package:shim/features/scripts/domain/models/inject_script.dart';
+import 'package:shim/features/scripts/presentation/widgets/script_editor_manual_dialog.dart';
 
 class ScriptEditorTitleBar extends StatelessWidget {
   const ScriptEditorTitleBar({
@@ -85,6 +86,13 @@ class ScriptEditorTitleBar extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
+                IconButton(
+                  tooltip: l10n.editorManual,
+                  iconSize: 18,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => ScriptEditorManualDialog.show(context),
+                  icon: Icon(Icons.menu_book_rounded, color: fg),
+                ),
                 IconButton(
                   tooltip: l10n.run,
                   iconSize: 20,
