@@ -51,6 +51,7 @@
     const t1 = performance.now();
     ns.features.claudeBridge.ensureNav();
     ns.features.shimMenu.ensure();
+    ns.features.pluginMenu?.ensure?.();
     const t2 = performance.now();
     ns.features.threadRow.ensure();
     const t3 = performance.now();

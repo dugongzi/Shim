@@ -31,6 +31,7 @@ class InjectQueryDatasource {
     'assets/inject/codex_enhance/features/claude_bridge.js',
     'assets/inject/codex_enhance/features/control_panel.js',
     'assets/inject/codex_enhance/features/network_blocker.js',
+    'assets/inject/codex_enhance/features/plugin_menu.js',
     'assets/inject/codex_enhance/features/project_menu_hook.js',
     'assets/inject/codex_enhance/features/provider_picker.js',
     'assets/inject/codex_enhance/features/shim_menu.js',
